@@ -1,9 +1,9 @@
-# Bambu Poop Chute for ESP32 
+# Bambu Poop Conveyor for ESP32 
 
 
 ## Overview
 
-The Bambu Poop Chute is an application designed to manage the waste output of a Bambu X1 3D printer. It utilizes WiFi and MQTT protocols to monitor the printer's status and control a motor that moves waste material away from the printing area. 
+The Bambu Poop Conveyor is an application designed to manage the waste output of a Bambu X1 3D printer. It utilizes WiFi and MQTT protocols to monitor the printer's status and control a motor that moves waste material away from the printing area. 
 
 https://github.com/user-attachments/assets/96f4e218-ed00-4c0a-9d67-1392f0b862df
 
