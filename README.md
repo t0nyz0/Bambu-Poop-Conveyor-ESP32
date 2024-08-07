@@ -120,7 +120,12 @@ The application monitors the printer's stages and activates the motor when neces
 
 Not listed
 - Wires
-- LEDs (Standard dev kit leds) 
+- LEDs (Standard dev kit leds)
+
+## Known Issues
+- You cannot access the config page immediately after the motor has run. This is due to the application being in a "delay" state for the amount of time the delayAfterRun value is set. In example, if you have delayAfterRun set to 30000 the /config page will be inaccessible for 30 seconds after the motor has run. I'm working on a fix.
+- The motor might not run exactly after the poop is ejected, I'm still working on adjusting timing. However it should run once after the filament calibration stage at the start of the print and once when it notices a "change filament" status. 
+
 
 ## License
 
