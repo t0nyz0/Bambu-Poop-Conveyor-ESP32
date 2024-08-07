@@ -5,9 +5,10 @@
 
 The Bambu Poop Chute is an application designed to manage the waste output of a Bambu X1 3D printer. It utilizes WiFi and MQTT protocols to monitor the printer's status and control a motor that moves waste material away from the printing area. 
 
-https://github.com/user-attachments/assets/e2652d62-8243-466e-ae58-bea461cfcaea
+https://github.com/user-attachments/assets/96f4e218-ed00-4c0a-9d67-1392f0b862df
 
 # Conveyor Makerworld files
+
 - Conveyor: https://makerworld.com/en/models/148083#profileId-161573
 - Motor box (I made my own but this one works): https://makerworld.com/en/models/164413#profileId-180494
 - Conveyor Extension: https://makerworld.com/en/models/249714#profileId-359905
