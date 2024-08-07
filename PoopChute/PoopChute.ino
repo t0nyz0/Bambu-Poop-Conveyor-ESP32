@@ -1,5 +1,5 @@
 #include <Arduino.h>
-// Bambu Poop Chute
+// Bambu Poop Conveyor
 // 8/6/24 - TZ
 char version[10] = "1.2.1";
 
@@ -202,7 +202,7 @@ void handleRoot() {
 // Function to handle the config URL
 void handleConfig() {
   if (server.method() == HTTP_GET) {
-  String html = "<!DOCTYPE html><html><head><title>Bambu Poop Chute</title>";
+  String html = "<!DOCTYPE html><html><head><title>Bambu Poop Conveyor</title>";
   html += "<style>";
   html += "body { font-family: Arial, sans-serif; background-color: #d1cdba; color: #333; text-align: center; margin: 0; padding: 0; }";
   html += ".container { max-width: 600px; margin: 5px auto; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }";
@@ -216,9 +216,9 @@ void handleConfig() {
   html += "input[type=submit]:hover { background-color: #218838; }";
   html += "</style>";
   html += "</head><body>";
-  html += "<div class=\"logo\"><img src=\"" + String(base64Image) + "\" alt=\"Bambu Chute Logo\"></div>";
+  html += "<div class=\"logo\"><img src=\"" + String(base64Image) + "\" alt=\"Bambu Conveyor Logo\"></div>";
   html += "<div class=\"container\">";
-  html += "<h2>Bambu Poop Chute v" + String(version) + "</h2>";
+  html += "<h2>Bambu Poop Conveyor v" + String(version) + "</h2>";
   html += "<form action=\"/config\" method=\"POST\" class=\"info\">";
   html += "<label for=\"ssid\">SSID:</label><input type=\"text\" id=\"ssid\" name=\"ssid\" value=\"" + String(ssid) + "\"><br>";
   html += "<label for=\"password\">Password:</label><input type=\"text\" id=\"password\" name=\"password\" value=\"" + String(password) + "\"><br>";
@@ -300,7 +300,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
     if (debug) {
       Serial.println("--------------------------------------------------------");
-      Serial.print("Bambu Poop Chute v");
+      Serial.print("Bambu Poop Conveyor v");
       Serial.print(version);
       Serial.print(" | Wifi: ");
       Serial.println(WiFi.localIP());
@@ -558,7 +558,7 @@ void loop() {
   }
 
   if (!client.connected() && (millis() - lastAttemptTime) > RECONNECT_INTERVAL) {
-    if (client.connect("BambuPoopChute", mqtt_user, mqtt_password)) {
+    if (client.connect("bambuConveyor", mqtt_user, mqtt_password)) {
       
 
       client.subscribe(mqtt_topic);
