@@ -1,7 +1,7 @@
 # Bambu Poop Conveyor for ESP32 
+:arrow_right:	:arrow_right:	:poop: :arrow_right: :arrow_right: :poop: :arrow_right: :arrow_right:
 
-
-## Overview
+## Overview 
 
 The Bambu Poop Conveyor is an application designed to manage the waste output of a Bambu X1 3D printer. It utilizes WiFi and MQTT protocols to monitor the printer's status and control a motor that moves waste material away from the printing area. 
 
@@ -93,8 +93,10 @@ The application hosts a web server to provide manual control and configuration. 
 - **Control URL:** Manual motor control page (`/control`)
 - **Config URL:** Configuration page to update settings (`/config`)
 
-Configuration Screen
-<img width="539" alt="Configuration Screen" src="https://github.com/user-attachments/assets/ec8cb253-7ef5-4910-a4c9-90fdf3cb58db">
+### Configuration Screen
+![image](https://github.com/user-attachments/assets/79571b1b-d081-496e-b8aa-a245bf4aa7c2)
+
+
 
 ### Printer Stage Monitoring
 
@@ -120,7 +122,12 @@ The application monitors the printer's stages and activates the motor when neces
 
 Not listed
 - Wires
-- LEDs (Standard dev kit leds) 
+- LEDs (Standard dev kit leds)
+
+## Known Issues
+- You cannot access the config page immediately after the motor has run. This is due to the application being in a "delay" state for the amount of time the delayAfterRun value is set. In example, if you have delayAfterRun set to 30000 the /config page will be inaccessible for 30 seconds after the motor has run. I'm working on a fix.
+- The motor might not run exactly after the poop is ejected, I'm still working on adjusting timing. However it should run once after the filament calibration stage at the start of the print and once when it notices a "change filament" status. 
+
 
 ## License
 
