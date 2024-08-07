@@ -1,7 +1,7 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-char version[10] = "1.2.1";
+char version[10] = "1.2.2";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -13,14 +13,14 @@ char version[10] = "1.2.1";
 //---- SETTINGS YOU SHOULD ENTER --------------------------------------------------------------------------------------------------------------------------
 
 // WiFi credentials // ENTER YOUR INFO HERE
-char ssid[40] = "";
-char password[40] = "";
+char ssid[40] = "Enter your WIFI ID";
+char password[40] = "Enter your WIFI Password";
 
 // MQTT credentials
-char mqtt_server[40] = "10.0.0.35"; // YOUR BAMBU X1 IP ADDRESS
+char mqtt_server[40] = "Enter Bambu Printer IP";         // YOUR BAMBU X1 IP ADDRESS
 
-char mqtt_password[30] = "";        // YOUR BAMBU ACCESS CODE (On your X1 Printer goto "Settings > General > Access code")
-char serial_number[20] = "";        // YOUR BAMBU SERIAL NUMBER (Can be found on the same scrreen as access code, its the "Device info" number)
+char mqtt_password[30] = "Enter Bambu Access Code";        // YOUR BAMBU ACCESS CODE (On your X1 Printer goto "Settings > General > Access code")
+char serial_number[20] = "Enter Bambu SN"; // YOUR BAMBU SERIAL NUMBER (Can be found on the same scrreen as access code, its the "Device info" number)
 
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -67,7 +67,6 @@ const unsigned long RECONNECT_INTERVAL = 15000;  // 5 seconds
 unsigned int sequence_id = 20000;
 unsigned long previousMillis = 0;
 
-// MQTT state variables
 int printer_stage = -1;
 int printer_sub_stage = -1;
 String printer_real_stage = "";
@@ -310,8 +309,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       Serial.println(getStageInfo(printer_sub_stage));
       
     }
-
-    if (printer_stage == 4 || printer_sub_stage == 4 && printer_stage != -1) {
+    // Run on 4 (Change filament) or 8 (calibrating) - 8 is used because its the last step of start process, should of pooped by now
+    if (printer_stage == 4 || printer_stage == 8 || printer_sub_stage == 4 && printer_stage != -1) {
       // About to poop
       if (debug) Serial.println("About to poop; Pausing 30 seconds..");
       digitalWrite(yellowLight, HIGH);
@@ -537,7 +536,6 @@ void setup() {
 void loop() {
   server.handleClient();
 
-  // Handle client requests
   if (WiFi.status() == WL_CONNECTED) {
     if (!wifiConnected) {
       wifiConnected = true;
@@ -558,7 +556,7 @@ void loop() {
   }
 
   if (!client.connected() && (millis() - lastAttemptTime) > RECONNECT_INTERVAL) {
-    if (client.connect("bambuConveyor", mqtt_user, mqtt_password)) {
+    if (client.connect("BambuPoopConveyor", mqtt_user, mqtt_password)) {
       
 
       client.subscribe(mqtt_topic);
