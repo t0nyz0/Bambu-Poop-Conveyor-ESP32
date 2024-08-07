@@ -7,10 +7,12 @@ The Bambu Poop Chute is an application designed to manage the waste output of a 
 
 https://github.com/user-attachments/assets/e2652d62-8243-466e-ae58-bea461cfcaea
 
-# Conveyor Printable files
+# Conveyor Makerworld files
 - Conveyor: https://makerworld.com/en/models/148083#profileId-161573
 - Motor box (I made my own but this one works): https://makerworld.com/en/models/164413#profileId-180494
 - Conveyor Extension: https://makerworld.com/en/models/249714#profileId-359905
+
+- The custom box I used: https://makerworld.com/en/models/576315#profileId-496900
 
 ## Features
 
