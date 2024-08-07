@@ -93,8 +93,10 @@ The application hosts a web server to provide manual control and configuration. 
 - **Control URL:** Manual motor control page (`/control`)
 - **Config URL:** Configuration page to update settings (`/config`)
 
-Configuration Screen
-<img width="539" alt="Configuration Screen" src="https://github.com/user-attachments/assets/ec8cb253-7ef5-4910-a4c9-90fdf3cb58db">
+### Configuration Screen
+![image](https://github.com/user-attachments/assets/79571b1b-d081-496e-b8aa-a245bf4aa7c2)
+
+
 
 ### Printer Stage Monitoring
 
