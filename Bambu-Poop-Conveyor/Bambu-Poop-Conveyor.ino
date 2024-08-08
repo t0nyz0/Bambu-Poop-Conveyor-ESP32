@@ -1,7 +1,7 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-char version[10] = "1.2.5";
+char version[10] = "1.2.6";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -52,7 +52,7 @@ int enable1Pin = 15;
 
 int motorRunTime = 10000; // 10 seconds by default
 int motorWaitTime = 5000; // The time to wait to run the motor.
-int delayAfterRun = 90000; // Delay after motor run
+int delayAfterRun = 120000; // Delay after motor run
 int additionalWaitTime = 0; // Variable to store additional wait time for specific stages
 
 // Setting PWM properties
@@ -244,11 +244,11 @@ void handleConfig() {
         html += "<div class=\"container\">";
         html += "<h2>Bambu Poop Conveyor v" + String(version) + "</h2>";
         html += "<form action=\"/config\" method=\"POST\" class=\"info\">";
-        html += "<label for=\"ssid\">SSID:</label><input type=\"text\" id=\"ssid\" name=\"ssid\" value=\"" + String(ssid) + "\"><br>";
-        html += "<label for=\"password\">Password:</label><input type=\"text\" id=\"password\" name=\"password\" value=\"" + String(password) + "\"><br>";
-        html += "<label for=\"mqtt_server\">MQTT Server:</label><input type=\"text\" id=\"mqtt_server\" name=\"mqtt_server\" value=\"" + String(mqtt_server) + "\"><br>";
-        html += "<label for=\"mqtt_password\">MQTT Password:</label><input type=\"text\" id=\"mqtt_password\" name=\"mqtt_password\" value=\"" + String(mqtt_password) + "\"><br>";
-        html += "<label for=\"serial_number\">Serial Number:</label><input type=\"text\" id=\"serial_number\" name=\"serial_number\" value=\"" + String(serial_number) + "\"><br>";
+        html += "<label for=\"ssid\">Wifi SSID:</label><input type=\"text\" id=\"ssid\" name=\"ssid\" value=\"" + String(ssid) + "\"><br>";
+        html += "<label for=\"password\">Wifi Password:</label><input type=\"text\" id=\"password\" name=\"password\" value=\"" + String(password) + "\"><br>";
+        html += "<label for=\"mqtt_server\">Bambu Printer IP Address:</label><input type=\"text\" id=\"mqtt_server\" name=\"mqtt_server\" value=\"" + String(mqtt_server) + "\"><br>";
+        html += "<label for=\"mqtt_password\">Bambu Printer Access Code:</label><input type=\"text\" id=\"mqtt_password\" name=\"mqtt_password\" value=\"" + String(mqtt_password) + "\"><br>";
+        html += "<label for=\"serial_number\">Bambu Printer Serial Number:</label><input type=\"text\" id=\"serial_number\" name=\"serial_number\" value=\"" + String(serial_number) + "\"><br>";
         html += "<label for=\"motorRunTime\">Motor Run Time (ms) <p><sub>How long the motor runs:</sub></p></label><input type=\"number\" id=\"motorRunTime\" name=\"motorRunTime\" value=\"" + String(motorRunTime) + "\"><br>";
         html += "<label for=\"motorWaitTime\">Motor Wait Time (ms) <p><sub>How long does the motor wait to run after detected poop state, set lower to run sooner, set higher if running before it poops:</sub></p></label><input type=\"number\" id=\"motorWaitTime\" name=\"motorWaitTime\" value=\"" + String(motorWaitTime) + "\"><br>";
         html += "<label for=\"delayAfterRun\">Delay After Run (ms) <p><sub>How long to wait after a run, set higher to avoid duplicate detection:</sub></p></label><input type=\"number\" id=\"delayAfterRun\" name=\"delayAfterRun\" value=\"" + String(delayAfterRun) + "\"><br>";
