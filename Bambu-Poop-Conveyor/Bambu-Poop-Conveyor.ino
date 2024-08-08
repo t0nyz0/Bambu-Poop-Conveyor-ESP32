@@ -13,23 +13,31 @@ char version[10] = "1.2.5";
 
 //---- SETTINGS YOU SHOULD ENTER --------------------------------------------------------------------------------------------------------------------------
 
-// WiFi credentials // ENTER YOUR INFO HERE
-char ssid[40] = "Enter your WIFI ID";
-char password[40] = "Enter your WIFI Password";
+// WiFi credentials
+char ssid[40] = "your-ssid";
+char password[40] = "your-password";
 
 // MQTT credentials
-char mqtt_server[40] = "Enter Bambu Printer IP";         // YOUR BAMBU X1 IP ADDRESS
-char mqtt_password[30] = "Enter Bambu Access Code";        // YOUR BAMBU ACCESS CODE
-char serial_number[20] = "Enter Bambu SN"; // YOUR BAMBU SERIAL NUMBER
+char mqtt_server[40] = "your-mqtt-server-ip";
+char mqtt_password[30] = "your-mqtt-password";
+char serial_number[20] = "your-printer-serial-number";
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
 
+
+// OPTIONAL: IF YOU WANT ACCURATE LOG TIMES UPDATE YOUR TIMEZONE HERE
+
 //const long gmtOffset_sec = -5 * 3600; // Adjust for your timezone (EST)
 const long gmtOffset_sec = -6 * 3600; // CST is GMT-6 hours
+
+// Daylight savings
 const int daylightOffset_sec = 3600; // Adjust for daylight saving time if applicable
 
+
+// --------------------------------------------------------------------------------------------------------------------------------------------------------
+
 // GPIO Pins
-#define BLED 2 // 
+#define BLED 2
 const int greenLight = 19;
 const int redLight = 4;
 const int yellowLight = 18;

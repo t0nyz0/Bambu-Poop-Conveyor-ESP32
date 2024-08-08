@@ -65,9 +65,9 @@ int enable1Pin = 15;
 Configure the motor run time and wait time:
 
 ```cpp
-int motorRunTime = 15000; // Motor runs for 15 seconds by default
-int motorWaitTime = 25000; // Wait 25 seconds before running the motor
-int delayAfterRun = 50000; // Delay after running the motor to avoid duplicate detection
+int motorRunTime = 10000; // 10 seconds by default
+int motorWaitTime = 5000; // The time to wait to run the motor.
+int delayAfterRun = 140000; // Delay after motor run
 
 ```
 
