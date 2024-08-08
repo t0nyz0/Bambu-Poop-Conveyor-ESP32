@@ -52,7 +52,7 @@ int enable1Pin = 15;
 
 int motorRunTime = 10000; // 10 seconds by default
 int motorWaitTime = 5000; // The time to wait to run the motor.
-int delayAfterRun = 140000; // Delay after motor run
+int delayAfterRun = 90000; // Delay after motor run
 int additionalWaitTime = 0; // Variable to store additional wait time for specific stages
 
 // Setting PWM properties
