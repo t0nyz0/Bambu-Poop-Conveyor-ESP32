@@ -1,7 +1,7 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-char version[10] = "1.2.4";
+char version[10] = "1.2.5";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -338,10 +338,14 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         printer_sub_stage = doc["print"]["mc_print_sub_stage"].as<int>();
     }
 
-    if (printer_stage == 4 || printer_stage == 14 || (printer_sub_stage == 4 && printer_stage != -1)) {
+    // Only set motorWaiting if it's not already waiting, running, or in delay after running state
+    if (!motorWaiting && !motorRunning && !delayAfterRunning && 
+        (printer_stage == 4 || printer_stage == 14 || (printer_sub_stage == 4 && printer_stage != -1))) {
         motorWaiting = true;
         motorWaitStartTime = millis();
-        
+        yellowLightStartTime = millis(); // Start yellow light flashing immediately
+        yellowLightState = HIGH; // Ensure the yellow light starts as HIGH
+        digitalWrite(yellowLight, yellowLightState); // Turn on yellow light immediately
         addLogEntry("Motor wait started due to printer stage");
     }
 
@@ -367,14 +371,22 @@ void connectToMqtt() {
             sprintf(mqtt_topic, "device/%s/report", serial_number);
             client.subscribe(mqtt_topic);
             publishPushAllMessage();
+            digitalWrite(redLight, LOW);
+            digitalWrite(greenLight, HIGH);
         } else {
             if (debug) {
                 Serial.print("Failed: ");
                 Serial.print(client.state());
                 Serial.println(" try again in 5 seconds");
+                digitalWrite(redLight, HIGH);
+                digitalWrite(greenLight, LOW);
             }
             lastAttemptTime = millis();
         }
+    }
+    else
+    {
+      digitalWrite(redLight, HIGH);
     }
 }
 
@@ -587,11 +599,12 @@ void loop() {
         motorWaiting = false;
         motorRunning = true;
         motorRunStartTime = millis();
+        digitalWrite(yellowLight, LOW); // Turn off yellow light
+        digitalWrite(redLight, HIGH); // Turn on red light
         if (debug) Serial.println("Moving Forward");
         digitalWrite(motor1Pin1, LOW);
         digitalWrite(motor1Pin2, HIGH);
         addLogEntry("Motor started");
-        digitalWrite(redLight, HIGH);
     }
 
     // Handle motor running state
@@ -616,7 +629,7 @@ void loop() {
 
     // Handle yellow light flashing
     unsigned long currentMillis = millis();
-    if (motorWaiting || motorRunning) {
+    if (motorWaiting) {
         digitalWrite(greenLight, LOW);
         if (currentMillis - yellowLightStartTime >= 500) {
             yellowLightStartTime = currentMillis;
