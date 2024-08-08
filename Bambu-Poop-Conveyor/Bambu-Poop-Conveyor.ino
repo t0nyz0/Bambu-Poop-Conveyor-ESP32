@@ -14,13 +14,13 @@ char version[10] = "1.2.6";
 //---- SETTINGS YOU SHOULD ENTER --------------------------------------------------------------------------------------------------------------------------
 
 // WiFi credentials
-char ssid[40] = "your-ssid";
-char password[40] = "your-password";
+char ssid[40] = "your-wifi-ssid";
+char password[40] = "your-wifi-password";
 
 // MQTT credentials
-char mqtt_server[40] = "your-mqtt-server-ip";
-char mqtt_password[30] = "your-mqtt-password";
-char serial_number[20] = "your-printer-serial-number";
+char mqtt_server[40] = "your-bambu-printer-ip";
+char mqtt_password[30] = "your-bambu-printer-accesscode";
+char serial_number[20] = "your-bambu-printer-serial-number";
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
 
