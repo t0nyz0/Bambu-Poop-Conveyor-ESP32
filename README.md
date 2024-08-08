@@ -92,10 +92,13 @@ The application hosts a web server to provide manual control and configuration. 
 - **Root URL:** Activates the motor (`/`)
 - **Control URL:** Manual motor control page (`/control`)
 - **Config URL:** Configuration page to update settings (`/config`)
+- **Logs URL:** Log history page (`/logs`)
 
 ### Configuration Screen
-![image](https://github.com/user-attachments/assets/79571b1b-d081-496e-b8aa-a245bf4aa7c2)
+![image](https://github.com/user-attachments/assets/26a5648e-9a62-4063-bedc-d47aaf4c28ed)
 
+### Log screen
+![image](https://github.com/user-attachments/assets/2455074b-a4e0-4280-a8b9-14a5fbf31aa4)
 
 
 ### Printer Stage Monitoring
