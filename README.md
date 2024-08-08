@@ -13,18 +13,18 @@ https://github.com/user-attachments/assets/e5a849d5-8708-4fe7-8b11-288ce03bfcbe
 
 # Conveyor Makerworld files
 
-- Conveyor: https://makerworld.com/en/models/148083#profileId-161573
-- Motor box (I made my own but this one works): https://makerworld.com/en/models/164413#profileId-180494
-- Conveyor Extension: https://makerworld.com/en/models/249714#profileId-359905
+- **Conveyor:** https://makerworld.com/en/models/148083#profileId-161573
+- **Motor box:** (I made my own but this one works): https://makerworld.com/en/models/164413#profileId-180494
+- **Conveyor Extension:** https://makerworld.com/en/models/249714#profileId-359905
 
-- The custom box I used: https://makerworld.com/en/models/576315#profileId-496900
+- **The custom box I used:** https://makerworld.com/en/models/576315#profileId-496900
 
 ## Features
 
-- **WiFi and MQTT Connectivity:** Connects to a local WiFi network and communicates with the printer via MQTT.
-- **Motor Control:** Activates a motor to manage the printer's waste output based on the printer's status.
-- **Web Server:** Hosts a web server to provide manual control and configuration of the system.
-- **Stage Monitoring:** Monitors various stages of the printer to determine when to activate the motor.
+- **WiFi and MQTT Connectivity:** Connects to a local WiFi network and communicates with the printer via MQTT
+- **Motor Control:** Activates a motor to manage the printer's waste output based on the printer's status
+- **Web Server:** Hosts a web server to provide manual control and configuration of the system
+- **Stage Monitoring:** Monitors various stages of the printer to determine when to activate the motor
 
 ## Setup
 
@@ -43,8 +43,14 @@ char mqtt_password[30] = "your-mqtt-password";
 char serial_number[20] = "your-printer-serial-number";
 
 ```
+### Note:
+- **ssid** is your WIFI name
+- **password** is the WIFI password
+- **mqtt_server** is your Bambu Printers IP address
+- **mqtt_password** is your Bambu printer access code as found on your printer
+- **serial_number** is your Bambu printer serial number as found on your printer
 
-### GPIO Pins
+## GPIO Pins
 
 The application uses the following GPIO pins for motor and LED control:
 
@@ -65,9 +71,9 @@ int enable1Pin = 15;
 Configure the motor run time and wait time:
 
 ```cpp
-int motorRunTime = 10000; // 10 seconds by default
+int motorRunTime = 10000; // 10 seconds by default // Honestly I prefer 5000 as the poop doesnt come out fast enough for you to need anymore than that, but 10 seconds is just more exciting
 int motorWaitTime = 5000; // The time to wait to run the motor.
-int delayAfterRun = 140000; // Delay after motor run
+int delayAfterRun = 120000; // Delay after motor run
 
 ```
 
@@ -95,7 +101,8 @@ The application hosts a web server to provide manual control and configuration. 
 - **Logs URL:** Log history page (`/logs`)
 
 ### Configuration Screen
-![image](https://github.com/user-attachments/assets/26a5648e-9a62-4063-bedc-d47aaf4c28ed)
+![image](https://github.com/user-attachments/assets/bc3b076c-d56b-43e2-885c-99390b164924)
+
 
 ### Log screen
 ![image](https://github.com/user-attachments/assets/2455074b-a4e0-4280-a8b9-14a5fbf31aa4)
