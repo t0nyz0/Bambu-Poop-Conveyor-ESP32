@@ -24,7 +24,6 @@ char serial_number[20] = "your-printer-serial-number";
 
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
 // OPTIONAL: IF YOU WANT ACCURATE LOG TIMES UPDATE YOUR TIMEZONE HERE
 
 //const long gmtOffset_sec = -5 * 3600; // Adjust for your timezone (EST)
@@ -54,6 +53,7 @@ int enable1Pin = 15;
 int motorRunTime = 10000; // 10 seconds by default
 int motorWaitTime = 5000; // The time to wait to run the motor.
 int delayAfterRun = 140000; // Delay after motor run
+int additionalWaitTime = 0; // Variable to store additional wait time for specific stages
 
 // Setting PWM properties
 const int freq = 5000;
@@ -351,6 +351,14 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         (printer_stage == 4 || printer_stage == 14 || (printer_sub_stage == 4 && printer_stage != -1))) {
         motorWaiting = true;
         motorWaitStartTime = millis();
+
+        // Adjust additional wait time based on printer stage
+        if (printer_sub_stage == 4 && printer_stage != -1) {
+            additionalWaitTime = 60000; // Additional 55 seconds for changing filament, after testing this seems to be about right, each persons settings will vary though.
+        } else {
+            additionalWaitTime = 0; // No additional wait time for other stages
+        }
+
         yellowLightStartTime = millis(); // Start yellow light flashing immediately
         yellowLightState = HIGH; // Ensure the yellow light starts as HIGH
         digitalWrite(yellowLight, yellowLightState); // Turn on yellow light immediately
@@ -603,7 +611,7 @@ void loop() {
     }
 
     // Handle motor waiting state
-    if (motorWaiting && millis() - motorWaitStartTime >= motorWaitTime) {
+    if (motorWaiting && millis() - motorWaitStartTime >= (motorWaitTime + additionalWaitTime)) {
         motorWaiting = false;
         motorRunning = true;
         motorRunStartTime = millis();
