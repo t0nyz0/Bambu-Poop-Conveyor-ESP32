@@ -122,7 +122,7 @@ The application monitors the printer's stages and activates the motor when neces
 
 
 ## List of some supplies
-- Breakout board for ESP32: https://amzn.to/4dcUunc
+- Breakout board for ESP32: https://amzn.to/4dyjsx0
 - ESP32 board: https://amzn.to/4fBjh5L
 - 12 Volt power supply: https://amzn.to/3AfIm6a
 - Motor Controller: https://amzn.to/3yBPqcM
