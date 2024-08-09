@@ -1,7 +1,7 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-char version[10] = "1.2.6";
+char version[10] = "1.2.7";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -215,9 +215,10 @@ void handleManualRun() {
     server.send(200, "text/plain", "Motor activated");
     motorWaiting = true;
     motorWaitStartTime = millis();
+    additionalWaitTime = 0;  // Reset additional wait time for manual trigger
     digitalWrite(greenLight, LOW);
     digitalWrite(yellowLight, HIGH);
-    addLogEntry("Motor activated from root");
+    addLogEntry("Motor activated from RUN url");
 }
 
 // Function to handle the config page
@@ -382,13 +383,12 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void connectToMqtt() {
     if (!client.connected()) {
         if (debug) Serial.print("Connecting to MQTT...");
-        if (client.connect("ESP32Client", mqtt_user, mqtt_password)) {
+        if (client.connect("BambuConveyor", mqtt_user, mqtt_password)) {
             if (debug) Serial.println("Connected to Bambu X1");
             sprintf(mqtt_topic, "device/%s/report", serial_number);
             client.subscribe(mqtt_topic);
             publishPushAllMessage();
             digitalWrite(redLight, LOW);
-            digitalWrite(greenLight, HIGH);
         } else {
             if (debug) {
                 Serial.print("Failed: ");
