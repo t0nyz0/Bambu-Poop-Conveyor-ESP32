@@ -5,8 +5,6 @@
 
 The Bambu Poop Conveyor is an application designed to manage the waste output of a Bambu X1 3D printer. It utilizes WiFi and MQTT protocols to monitor the printer's status and control a motor that moves waste material away from the printing area. 
 
-https://github.com/user-attachments/assets/96f4e218-ed00-4c0a-9d67-1392f0b862df
-
 https://github.com/user-attachments/assets/e5a849d5-8708-4fe7-8b11-288ce03bfcbe
 
 
@@ -124,7 +122,7 @@ The application monitors the printer's stages and activates the motor when neces
 
 
 ## List of some supplies
-- Breakout board for ESP32: https://amzn.to/4dcUunc
+- Breakout board for ESP32: https://amzn.to/4dyjsx0
 - ESP32 board: https://amzn.to/4fBjh5L
 - 12 Volt power supply: https://amzn.to/3AfIm6a
 - Motor Controller: https://amzn.to/3yBPqcM
