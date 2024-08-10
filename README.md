@@ -8,6 +8,16 @@ The Bambu Poop Conveyor is an application designed to manage the waste output of
 https://github.com/user-attachments/assets/e5a849d5-8708-4fe7-8b11-288ce03bfcbe
 
 
+## List of some supplies
+- Breakout board for ESP32: https://amzn.to/4dyjsx0
+- ESP32 board: https://amzn.to/4fBjh5L
+- 12 Volt power supply: https://amzn.to/3AfIm6a
+- Motor Controller: https://amzn.to/3yBPqcM
+- 12V 10RPM Motor: https://amzn.to/3M24VOd
+
+Not listed
+- Wires
+- LEDs (Standard dev kit leds)
 
 # Conveyor Makerworld files
 
@@ -36,9 +46,9 @@ char ssid[40] = "your-ssid";
 char password[40] = "your-password";
 
 // MQTT credentials
-char mqtt_server[40] = "your-mqtt-server-ip";
-char mqtt_password[30] = "your-mqtt-password";
-char serial_number[20] = "your-printer-serial-number";
+char mqtt_server[40] = "your-bambu-printer-ip";
+char mqtt_password[30] = "your-bambu-printer-accesscode";
+char serial_number[20] = "your-bambu-printer-serial-number";
 
 ```
 ### Note:
@@ -87,6 +97,16 @@ int dutyCycle = 220;
 
 ```
 
+
+## Installation
+
+1. Connect the ESP32 to your computer.
+2. Open the code in the Arduino IDE.
+3. Enter your WiFi and MQTT credentials in the respective variables.
+4. Upload the code to the ESP32.
+5. Access the web server via the IP address assigned to the ESP32 to configure and control the application.
+
+
 ## Usage
 
 ### Web Server
@@ -98,42 +118,7 @@ The application hosts a web server to provide manual control and configuration. 
 - **Config URL:** Configuration page to update settings (`/config`)
 - **Logs URL:** Log history page (`/logs`)
 
-### Configuration Screen
-![image](https://github.com/user-attachments/assets/bc3b076c-d56b-43e2-885c-99390b164924)
 
-
-### Log screen
-![image](https://github.com/user-attachments/assets/2455074b-a4e0-4280-a8b9-14a5fbf31aa4)
-
-
-### Printer Stage Monitoring
-
-The application monitors the printer's stages and activates the motor when necessary. The stages are identified using MQTT messages from the printer.
-
-
-
-## Installation
-
-1. Connect the ESP32 to your computer.
-2. Open the code in the Arduino IDE.
-3. Enter your WiFi and MQTT credentials in the respective variables.
-4. Upload the code to the ESP32.
-5. Access the web server via the IP address assigned to the ESP32 to configure and control the application.
-
-
-## List of some supplies
-- Breakout board for ESP32: https://amzn.to/4dyjsx0
-- ESP32 board: https://amzn.to/4fBjh5L
-- 12 Volt power supply: https://amzn.to/3AfIm6a
-- Motor Controller: https://amzn.to/3yBPqcM
-- 12V 10RPM Motor: https://amzn.to/3M24VOd
-
-Not listed
-- Wires
-- LEDs (Standard dev kit leds)
-
-## Known Issues
-- The motor might not run exactly after the poop is ejected, I'm still working on adjusting timing. However it should run once after the filament calibration stage at the start of the print and once when it notices a "change filament" status. 
 
 
 ## License
