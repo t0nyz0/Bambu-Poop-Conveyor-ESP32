@@ -1,6 +1,8 @@
 # Bambu Poop Conveyor for ESP32 
 :arrow_right:	:arrow_right:	:poop: :arrow_right: :arrow_right: :poop: :arrow_right: :arrow_right:
 
+### For more detailed project information visit: https://t0nyz.com/projects/bambuconveyor
+
 ## Overview 
 
 The Bambu Poop Conveyor is an application designed to manage the waste output of a Bambu X1 3D printer. It utilizes WiFi and MQTT protocols to monitor the printer's status and control a motor that moves waste material away from the printing area. 
@@ -63,7 +65,6 @@ char serial_number[20] = "your-bambu-printer-serial-number";
 The application uses the following GPIO pins for motor and LED control:
 
 ```cpp
-#define BLED 2
 const int greenLight = 19;
 const int redLight = 4;
 const int yellowLight = 18;
