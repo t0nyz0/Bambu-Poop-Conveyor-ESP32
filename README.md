@@ -114,10 +114,11 @@ int dutyCycle = 220;
 
 The application hosts a web server to provide manual control and configuration. Access the following URLs for different functionalities:
 
-- **Root URL:** Activates the motor (`/`)
+- **Root URL:** Opens Configuration page (`/`)
 - **Control URL:** Manual motor control page (`/control`)
-- **Config URL:** Configuration page to update settings (`/config`)
+- **Config URL:** Configuration page to update settings (`/config`) 
 - **Logs URL:** Log history page (`/logs`)
+- **Manual Run URL:** Opening this URL runs the motor manually (`/run`)
 
 
 
