@@ -125,3 +125,5 @@ The application hosts a web server to provide manual control and configuration. 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+For more detailed project information visit: https://t0nyz.com/projects/bambuconveyor
