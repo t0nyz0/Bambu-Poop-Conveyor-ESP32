@@ -16,10 +16,10 @@ https://github.com/user-attachments/assets/e5a849d5-8708-4fe7-8b11-288ce03bfcbe
 - 12 Volt power supply: https://amzn.to/3AfIm6a
 - Motor Controller: https://amzn.to/3yBPqcM
 - 12V 10RPM Motor: https://amzn.to/3M24VOd
-
-Not listed
-- Wires
-- LEDs (Standard dev kit leds)
+- Resistors (I use 1k Ohm): https://amzn.to/4cqCi8e
+- Wires: https://amzn.to/46EAtn3
+- LEDs sourced from this kit: https://amzn.to/4dH5Dw7
+  
 
 # Conveyor Makerworld files
 
