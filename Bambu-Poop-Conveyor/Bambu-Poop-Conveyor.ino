@@ -1,7 +1,7 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-char version[10] = "1.2.7";
+char version[10] = "1.2.8";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -36,7 +36,6 @@ const int daylightOffset_sec = 3600; // Adjust for daylight saving time if appli
 // --------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // GPIO Pins
-#define BLED 2
 const int greenLight = 19;
 const int redLight = 4;
 const int yellowLight = 18;
@@ -58,6 +57,7 @@ int additionalWaitTime = 0; // Variable to store additional wait time for specif
 // Setting PWM properties
 const int freq = 5000;
 const int pwmChannel = 0;
+const int pwmTimer = 0; // Define the timer (use 0 if you didn't have one before)
 const int resolution = 8;
 int dutyCycle = 225;
 
@@ -312,7 +312,7 @@ void handleLogs() {
     html += "</style>";
     html += "</head><body>";
     html += "<div class='container'>";
-    html += "<h1>Last 100 Runs</h1>";
+    html += "<h1>Logs</h1>";
     html += "<table><tr><th>Timestamp</th><th>Action</th></tr>";
 
     for (int i = 0; i < MAX_LOG_ENTRIES; i++) {
@@ -355,7 +355,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
         // Adjust additional wait time based on printer stage
         if (printer_sub_stage == 4 && printer_stage != -1) {
-            additionalWaitTime = 60000; // Additional 55 seconds for changing filament, after testing this seems to be about right, each persons settings will vary though.
+            additionalWaitTime = 75000; // Additional seconds for changing filament, after testing this seems to be about right, each persons settings will vary though.
         } else {
             additionalWaitTime = 0; // No additional wait time for other stages
         }
@@ -394,8 +394,6 @@ void connectToMqtt() {
                 Serial.print("Failed: ");
                 Serial.print(client.state());
                 Serial.println(" try again in 5 seconds");
-                digitalWrite(redLight, HIGH);
-                digitalWrite(greenLight, LOW);
             }
             lastAttemptTime = millis();
         }
@@ -488,7 +486,6 @@ void setup() {
     pinMode(motor1Pin1, OUTPUT);
     pinMode(motor1Pin2, OUTPUT);
     pinMode(enable1Pin, OUTPUT);
-    pinMode(BLED, OUTPUT);
     pinMode(yellowLight, OUTPUT);
     pinMode(redLight, OUTPUT);
     pinMode(greenLight, OUTPUT);
@@ -498,9 +495,8 @@ void setup() {
     client.setBufferSize(20000);
 
     // Configure LED PWM functionalities
-    ledcSetup(pwmChannel, freq, resolution);
-    ledcAttachPin(enable1Pin, pwmChannel);
-    ledcWrite(pwmChannel, dutyCycle);
+    ledcAttachChannel(enable1Pin, freq, resolution, pwmChannel);
+    ledcWrite(enable1Pin, dutyCycle);
 
     // Start Preferences
     preferences.begin("my-config", false);
@@ -533,6 +529,7 @@ void setup() {
         Serial.println();
         Serial.print("Connected to WiFi. IP address: ");
         Serial.println(WiFi.localIP());
+        addLogEntry("Connected to Wifi");
     }
 
     // Synchronize time with NTP server
@@ -573,6 +570,9 @@ void setup() {
 }
 
 // Loop function
+// Add this variable to track if MQTT is in reconnecting state
+bool mqttReconnecting = false;
+
 void loop() {
     server.handleClient();
 
@@ -592,10 +592,21 @@ void loop() {
             pushAllCommandSent = true;
         }
     } else {
-        mqttConnected = false;
+        if (mqttConnected) {
+            mqttConnected = false;
+        }
+
+        // Flash the yellow light when trying to reconnect
+        unsigned long currentMillis = millis();
+        if (currentMillis - yellowLightStartTime >= 500) {  // Flash every 500ms
+            yellowLightStartTime = currentMillis;
+            yellowLightState = !yellowLightState;  // Toggle the yellow light
+            digitalWrite(yellowLight, yellowLightState);
+        }
     }
 
     if (!client.connected() && (millis() - lastAttemptTime) > RECONNECT_INTERVAL) {
+        digitalWrite(yellowLight, HIGH);  // Keep the yellow light on while attempting to connect
         connectToMqtt();
     }
 
@@ -647,6 +658,13 @@ void loop() {
     unsigned long currentMillis = millis();
     if (motorWaiting) {
         digitalWrite(greenLight, LOW);
+        if (currentMillis - yellowLightStartTime >= 500) {
+            yellowLightStartTime = currentMillis;
+            yellowLightState = !yellowLightState;
+            digitalWrite(yellowLight, yellowLightState);
+        }
+    } else if (!client.connected()) {
+        // Ensure yellow light continues flashing if MQTT is disconnected
         if (currentMillis - yellowLightStartTime >= 500) {
             yellowLightStartTime = currentMillis;
             yellowLightState = !yellowLightState;
