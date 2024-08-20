@@ -5,7 +5,7 @@
 
 ## Overview 
 
-The Bambu Poop Conveyor is an application designed to manage the waste output of a Bambu X1 3D printer. It utilizes WiFi and MQTT protocols to monitor the printer's status and control a motor that moves waste material away from the printing area. 
+The Bambu Conveyor is an application designed to manage the waste output of a [Bambu Labs X1 3D printer](https://bambulab.com/en/x1). It utilizes the MQTT protocol to monitor the printer's status and control a motor that moves waste material away from the printing area. 
 
 https://github.com/user-attachments/assets/e5a849d5-8708-4fe7-8b11-288ce03bfcbe
 
@@ -121,7 +121,21 @@ The application hosts a web server to provide manual control and configuration. 
 - **Logs URL:** Log history page (`/logs`)
 - **Manual Run URL:** Opening this URL runs the motor manually (`/run`)
 
+### FAQ / Troubleshooting
 
+*What do the flashing lights mean when its first turned on?*
+- Flashing yellow only = Connecting to WiFi
+- Solid Green = We are connected to Wifi and MQTT printer
+- Red Light on bootup = No Wifi / No MQTT (Solid red also when conveyor is running)
+- Green light / Yellow flashing = Wifi connected / Attempting to connect to printer
+- Green light / Yellow solid = Wifi conncted / Issue connecting to printer via MQTT
+
+*The ESP32 doesnt connect to the printer*
+- Double check that your printer is setup with Access Code and LAN only mode is **OFF** [See Bambu Wiki](https://wiki.bambulab.com/en/knowledge-sharing/enable-lan-mode)
+- Double check your SN matches the settings you put in
+- Make sure your printer has good Wifi signal
+- Make sure the ESP32 has good Wifi signal
+- Reach out to me if you still have issues
 
 
 ## License
