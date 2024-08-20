@@ -95,7 +95,7 @@ Set the PWM properties for motor control:
 const int freq = 5000;
 const int pwmChannel = 0;
 const int resolution = 8;
-int dutyCycle = 220;
+int dutyCycle = 220; // Motors power level (255 for full power) / I run just under that for no reason other than my own preference 
 
 ```
 
