@@ -128,7 +128,7 @@ The application hosts a web server to provide manual control and configuration. 
 - Solid Green = We are connected to Wifi and MQTT printer
 - Red Light on bootup = No Wifi / No MQTT (Solid red also when conveyor is running)
 - Green light / Yellow flashing = Wifi connected / Attempting to connect to printer
-- Green light / Yellow solid = Wifi conncted / Issue connecting to printer via MQTT
+- Green light / Yellow solid = Wifi conncted / Issue connecting to printer via MQTT / Will reattempt connection after 5 seconds
 
 *The ESP32 doesnt connect to the printer*
 - Double check that your printer is setup with Access Code and LAN only mode is **OFF** [See Bambu Wiki](https://wiki.bambulab.com/en/knowledge-sharing/enable-lan-mode)
