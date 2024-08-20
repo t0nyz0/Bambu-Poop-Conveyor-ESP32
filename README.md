@@ -81,9 +81,9 @@ int enable1Pin = 15;
 Configure the motor run time and wait time:
 
 ```cpp
-int motorRunTime = 10000; // 10 seconds by default // Honestly I prefer 5000 as the poop doesnt come out fast enough for you to need anymore than that, but 10 seconds is just more exciting
-int motorWaitTime = 5000; // The time to wait to run the motor.
-int delayAfterRun = 120000; // Delay after motor run
+int motorRunTime = 10000; // 10 seconds by default / I prefer 5000 as the poop doesnt come out fast enough for you to need anymore than that, but 10 seconds is just more exciting
+int motorWaitTime = 5000; // The time to wait to run the motor. / We dont want the conveyor to run right when the status is detected, 5 seconds is just right in my case
+int delayAfterRun = 120000; // Delay after motor run / We dont want it to run again anytime soon
 
 ```
 
