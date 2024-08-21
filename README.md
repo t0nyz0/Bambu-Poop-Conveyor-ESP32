@@ -67,8 +67,8 @@ The application uses the following GPIO pins for motor and LED control:
 
 ```cpp
 const int greenLight = 19;
-const int redLight = 4;
 const int yellowLight = 18;
+const int redLight = 4;
 
 int motor1Pin1 = 23;
 int motor1Pin2 = 21;
