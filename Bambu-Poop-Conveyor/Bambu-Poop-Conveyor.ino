@@ -37,8 +37,8 @@ const int daylightOffset_sec = 3600; // Adjust for daylight saving time if appli
 
 // GPIO Pins
 const int greenLight = 19;
-const int redLight = 4;
 const int yellowLight = 18;
+const int redLight = 4;
 
 char mqtt_port[6] = "8883";
 char mqtt_user[30] = "bblp";
@@ -57,7 +57,7 @@ int additionalWaitTime = 0; // Variable to store additional wait time for specif
 // Setting PWM properties
 const int freq = 5000;
 const int pwmChannel = 0;
-const int pwmTimer = 0; // Define the timer (use 0 if you didn't have one before)
+const int pwmTimer = 0; 
 const int resolution = 8;
 int dutyCycle = 225;
 
