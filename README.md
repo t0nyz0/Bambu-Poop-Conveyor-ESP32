@@ -7,8 +7,6 @@
 
 The Bambu Conveyor is an application designed to manage the waste output of a [Bambu Labs X1 3D printer](https://bambulab.com/en/x1). It utilizes the MQTT protocol to monitor the printer's status and control a motor that moves waste material away from the printing area. 
 
-https://github.com/user-attachments/assets/e5a849d5-8708-4fe7-8b11-288ce03bfcbe
-
 
 ## List of some supplies
 - Breakout board for ESP32: https://amzn.to/4dyjsx0
