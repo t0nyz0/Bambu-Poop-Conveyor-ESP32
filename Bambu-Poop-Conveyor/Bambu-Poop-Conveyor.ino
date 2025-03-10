@@ -54,6 +54,7 @@ char mqtt_topic[200];
 
 // Poop Motor
 int motor1Pin1 = 23;
+int motorDirection = 0; // Default to 0 (Forward)
 int motor1Pin2 = 21;
 int enable1Pin = 15;
 
@@ -274,6 +275,11 @@ void handleConfig() {
         html += "<option value=\"P1\"" + String((String(printer_model) == "P1") ? " selected" : "") + ">P1</option>";
         html += "<option value=\"A1\"" + String((String(printer_model) == "A1") ? " selected" : "") + ">A1</option>";
         html += "</select><br>";
+        html += "<label for=\"motorDirection\">Motor Direction:</label>";
+        html += "<select id=\"motorDirection\" name=\"motorDirection\">";
+        html += "<option value=\"0\"" + String((motorDirection == 0) ? " selected" : "") + ">Forward</option>";
+        html += "<option value=\"1\"" + String((motorDirection == 1) ? " selected" : "") + ">Reverse</option>";
+        html += "</select><br>";
         html += "<label for=\"debug\"> Debug Mode (Reduced performance):</label>";
         html += "<input type=\"checkbox\" id=\"debug\" name=\"debug\" " + String(debug ? "checked" : "") + "><br>";
         html += "<input type=\"submit\" value=\"Save\">";
@@ -301,6 +307,7 @@ void handleConfig() {
         delayAfterRun = server.arg("delayAfterRun").toInt();
         useMotionSensor = server.hasArg("useMotionSensor");
         debug = server.hasArg("debug");
+        motorDirection = server.arg("motorDirection").toInt();
 
         // Store in Preferences for persistence
         preferences.putString("ssid", ssid);
@@ -313,6 +320,7 @@ void handleConfig() {
         preferences.putInt("delayAfterRun", delayAfterRun);
         preferences.putBool("useMotionSensor", useMotionSensor);
         preferences.putString("printer_model", printer_model);
+        preferences.putInt("motorDirection", motorDirection);
         preferences.putBool("debug", debug);
 
         preferences.end();  
@@ -549,10 +557,9 @@ void setup() {
     motorRunTime = preferences.getInt("motorRunTime", 10000);
     motorWaitTime = preferences.getInt("motorWaitTime", 5000);
     delayAfterRun = preferences.getInt("delayAfterRun", 120000);
-
+    motorDirection = preferences.getInt("motorDirection", 0);
     // Close Preferences after reading all values
     preferences.end();
-
 
     // Decide if we should connect to WiFi or enter AP mode
     if (strlen(ssid) > 0 && strlen(password) > 0) {
@@ -692,9 +699,14 @@ void loop() {
         motorRunStartTime = millis();
         digitalWrite(yellowLight, LOW);  
         digitalWrite(redLight, HIGH);    
-        if (debug) Serial.println("Moving Forward");
-        digitalWrite(motor1Pin1, LOW);
-        digitalWrite(motor1Pin2, HIGH);
+        if (debug) Serial.println(String("Moving ") + (motorDirection == 0 ? "Forward" : "Reverse"));
+        if (motorDirection == 0) {
+            digitalWrite(motor1Pin1, LOW);
+            digitalWrite(motor1Pin2, HIGH);
+        } else {
+            digitalWrite(motor1Pin1, HIGH);
+            digitalWrite(motor1Pin2, LOW);
+        }
         addLogEntry("Conveyor Running | MOTOR STARTED");
     }
 
