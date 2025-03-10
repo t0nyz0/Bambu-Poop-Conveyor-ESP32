@@ -355,7 +355,7 @@ void handleConfig() {
 
         preferences.end();  
 
-        server.send(200, "text/html", "<h1>Settings saved! This page will automatically refresh in 15 seconds...</h1><script>setTimeout(() => { location.reload(); }, 15000);</script><br><br><a href=\"/config\">Refresh now</a>");
+        server.send(200, "text/html", "<h1>Settings saved! This page will automatically refresh in 15 seconds...</h1><script>setTimeout(() => { window.location.href = '/config'; }, 15000);</script><br><br><a href=\"/config\">Refresh now</a>");
 
         delay(1000);
         ESP.restart();
