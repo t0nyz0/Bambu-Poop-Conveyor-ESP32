@@ -1,8 +1,7 @@
-
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-// Last updated: 2/7/25
+// Last updated: 3/9/25
 char version[10] = "1.3.5";
 
 #include <WiFi.h>
@@ -17,8 +16,8 @@ char version[10] = "1.3.5";
 //---- SETTINGS YOU SHOULD ENTER --------------------------------------------------------------------------------------------------------------------------
 
 // WiFi credentials
-char ssid[40] = "your-wifi-ssid";
-char password[40] = "your-wifi-password";
+char ssid[40] = "";
+char password[40] = "";
 
 // MQTT credentials
 char mqtt_server[40] = "your-bambu-printer-ip";
