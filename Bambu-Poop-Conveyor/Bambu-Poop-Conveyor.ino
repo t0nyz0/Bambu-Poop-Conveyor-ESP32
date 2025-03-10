@@ -1,8 +1,9 @@
+
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
 // Last updated: 2/7/25
-char version[10] = "1.3.4";
+char version[10] = "1.3.5";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -32,7 +33,7 @@ char printer_model[5] = "X1";  // Default to X1
 // OPTIONAL: IF YOU WANT ACCURATE LOG TIMES UPDATE YOUR TIMEZONE HERE
 
 //const long gmtOffset_sec = -5 * 3600; // Adjust for your timezone (EST)
-const long gmtOffset_sec = -6 * 3600; // CST is GMT-6 hours
+int gmtOffset_sec = -6 * 3600; // Default to CST (GMT-6 hours)
 
 // Daylight savings
 const int daylightOffset_sec = 3600; // Adjust for daylight saving time if applicable
@@ -270,6 +271,14 @@ void handleConfig() {
         html += "<label for=\"useMotionSensor\"> Use Motion Sensor (Disables MQTT detection):</label>";
         html += "<input type=\"checkbox\" id=\"useMotionSensor\" name=\"useMotionSensor\" " + String(useMotionSensor ? "checked" : "") + "><br>";
         html += "<label for=\"printer_model\">Printer Model:</label>";
+        html += "<label for=\"gmtOffset_sec\">Timezone:</label>";
+        html += "<select id=\"gmtOffset_sec\" name=\"gmtOffset_sec\">";
+        html += "<option value=\"-5\"" + String((gmtOffset_sec == -5 * 3600) ? " selected" : "") + ">EST (UTC-5)</option>";
+        html += "<option value=\"-6\"" + String((gmtOffset_sec == -6 * 3600) ? " selected" : "") + ">CST (UTC-6)</option>";
+        html += "<option value=\"-7\"" + String((gmtOffset_sec == -7 * 3600) ? " selected" : "") + ">MST (UTC-7)</option>";
+        html += "<option value=\"-8\"" + String((gmtOffset_sec == -8 * 3600) ? " selected" : "") + ">PST (UTC-8)</option>";
+        html += "<option value=\"0\"" + String((gmtOffset_sec == 0) ? " selected" : "") + ">UTC (UTC+0)</option>";
+        html += "</select><br>";
         html += "<select id=\"printer_model\" name=\"printer_model\">";
         html += "<option value=\"X1\"" + String((String(printer_model) == "X1") ? " selected" : "") + ">X1</option>";
         html += "<option value=\"P1\"" + String((String(printer_model) == "P1") ? " selected" : "") + ">P1</option>";
@@ -308,7 +317,8 @@ void handleConfig() {
         useMotionSensor = server.hasArg("useMotionSensor");
         debug = server.hasArg("debug");
         motorDirection = server.arg("motorDirection").toInt();
-
+        gmtOffset_sec = server.arg("gmtOffset_sec").toInt() * 3600;
+ 
         // Store in Preferences for persistence
         preferences.putString("ssid", ssid);
         preferences.putString("password", password);
@@ -322,6 +332,7 @@ void handleConfig() {
         preferences.putString("printer_model", printer_model);
         preferences.putInt("motorDirection", motorDirection);
         preferences.putBool("debug", debug);
+        preferences.putInt("gmtOffset_sec", gmtOffset_sec);
 
         preferences.end();  
 
@@ -332,8 +343,6 @@ void handleConfig() {
     }
 }
 
-
-
 String formatDateTime(time_t timestamp) {
     struct tm* timeinfo = localtime(&timestamp);
 
@@ -341,6 +350,12 @@ String formatDateTime(time_t timestamp) {
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
 
     return String(buffer);
+}
+
+// Handle Home Assistant status check
+void handleMotorStatus() {
+    String jsonResponse = "{ \"motor_running\": " + String(motorRunning ? "true" : "false") + " }";
+    server.send(200, "application/json", jsonResponse);
 }
 
 void handleLogs() {
@@ -587,7 +602,9 @@ void setup() {
     server.on("/control", handleControl);
     server.on("/config", handleConfig);
     server.on("/logs", handleLogs);
+    // Register Home Assistant API endpoints
     server.on("/run", handleManualRun);
+    server.on("/status", handleMotorStatus);
 
     // Initialize logs
     for (int i = 0; i < MAX_LOG_ENTRIES; i++) {
