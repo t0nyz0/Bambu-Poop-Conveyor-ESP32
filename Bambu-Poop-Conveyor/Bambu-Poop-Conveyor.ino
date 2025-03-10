@@ -1,8 +1,8 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-// Last updated: 2/7/25
-char version[10] = "1.3.4";
+// Last updated: 3/9/25
+char version[10] = "1.3.5";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -10,14 +10,15 @@ char version[10] = "1.3.4";
 #include <PubSubClient.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
+#include <Update.h>
 #include <DNSServer.h>
 #include <time.h> 
 
 //---- SETTINGS YOU SHOULD ENTER --------------------------------------------------------------------------------------------------------------------------
 
 // WiFi credentials
-char ssid[40] = "your-wifi-ssid";
-char password[40] = "your-wifi-password";
+char ssid[40] = "";
+char password[40] = "";
 
 // MQTT credentials
 char mqtt_server[40] = "your-bambu-printer-ip";
@@ -32,13 +33,10 @@ char printer_model[5] = "X1";  // Default to X1
 // OPTIONAL: IF YOU WANT ACCURATE LOG TIMES UPDATE YOUR TIMEZONE HERE
 
 //const long gmtOffset_sec = -5 * 3600; // Adjust for your timezone (EST)
-const long gmtOffset_sec = -6 * 3600; // CST is GMT-6 hours
+int gmtOffset_sec = -6; // Default to CST (GMT-6 hours)
 
 // Daylight savings
 const int daylightOffset_sec = 3600; // Adjust for daylight saving time if applicable
-
-
-// --------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // GPIO Pins
 const int greenLight = 19;
@@ -54,6 +52,7 @@ char mqtt_topic[200];
 
 // Poop Motor
 int motor1Pin1 = 23;
+int motorDirection = 0; // Default to 0 (Forward)
 int motor1Pin2 = 21;
 int enable1Pin = 15;
 
@@ -111,23 +110,6 @@ int logIndex = 0;
 
 // Sync time so we have proper logging
 const char* ntpServer = "pool.ntp.org";
-
-
-void setupTime() {
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    Serial.print("Waiting for time synchronization... ");
-    while (!time(nullptr)) {
-        Serial.print(".");
-        delay(1000);
-    }
-    Serial.println("done.");
-
-    // Print the current time after synchronization
-    time_t now = time(nullptr);
-    Serial.print("Current time: ");
-    Serial.println(ctime(&now));
-}
-
 
 // MQTT state variables
 int printer_stage = -1;
@@ -188,9 +170,55 @@ const char* getStageInfo(int stage) {
 // Function to add log entries
 void addLogEntry(String action) {
     time_t now = time(nullptr);
-    logs[logIndex].timestamp = now;
+
+    logs[logIndex].timestamp = now; // Store raw timestamp (UTC)
     logs[logIndex].action = action;
     logIndex = (logIndex + 1) % MAX_LOG_ENTRIES;
+}
+
+void syncTime() {
+    addLogEntry("Syncing time...");
+    configTime(gmtOffset_sec * 3600, daylightOffset_sec, ntpServer);
+
+    struct tm timeinfo;
+    int retries = 0;
+    while (!getLocalTime(&timeinfo) && retries < 10) {  
+        addLogEntry("Failed to obtain time, retrying...");
+        delay(1000);
+        retries++;
+    }
+
+    if (retries < 10) {
+        char timeString[50];
+        strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        addLogEntry("Time synchronized! ESP32 thinks current time is: " + String(timeString));
+    } else {
+        addLogEntry("Failed to synchronize time after multiple attempts.");
+    }
+}
+
+void handleFirmwareUpload() {
+    HTTPUpload& upload = server.upload();
+    
+    if (upload.status == UPLOAD_FILE_START) {
+        Serial.printf("Firmware update initiated: %s\n", upload.filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { // Start OTA update
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_END) {
+        if (Update.end(true)) { // Finish OTA update
+            Serial.println("Firmware update successful!");
+            server.send(200, "text/html", "<h1>Update Successful! Rebooting...</h1>");
+            delay(1000);
+            ESP.restart();
+        } else {
+            Update.printError(Serial);
+        }
+    }
 }
 
 // Function to handle the control page
@@ -274,13 +302,19 @@ void handleConfig() {
         html += "<option value=\"P1\"" + String((String(printer_model) == "P1") ? " selected" : "") + ">P1</option>";
         html += "<option value=\"A1\"" + String((String(printer_model) == "A1") ? " selected" : "") + ">A1</option>";
         html += "</select><br>";
+        html += "<label for=\"motorDirection\">Motor Direction:</label>";
+        html += "<select id=\"motorDirection\" name=\"motorDirection\">";
+        html += "<option value=\"0\"" + String((motorDirection == 0) ? " selected" : "") + ">Forward</option>";
+        html += "<option value=\"1\"" + String((motorDirection == 1) ? " selected" : "") + ">Reverse</option>";
+        html += "</select><br>";
         html += "<label for=\"debug\"> Debug Mode (Reduced performance):</label>";
         html += "<input type=\"checkbox\" id=\"debug\" name=\"debug\" " + String(debug ? "checked" : "") + "><br>";
-        html += "<input type=\"submit\" value=\"Save\">";
-        html += "</form>";
+        html += "<input type=\"submit\" value=\"Save Settings and Reboot\">";
+        html += "<br>";
         html += "<div class=\"links\">";
-        html += "<a href=\"/control\">Control Page</a>";
+        html += "<a href=\"/control\">Motor Manual Control Page</a>";
         html += "<a href=\"/logs\">Logs Page</a>";
+
         html += "</div></div></body></html>";
 
         server.send(200, "text/html", html);
@@ -301,7 +335,9 @@ void handleConfig() {
         delayAfterRun = server.arg("delayAfterRun").toInt();
         useMotionSensor = server.hasArg("useMotionSensor");
         debug = server.hasArg("debug");
-
+        motorDirection = server.arg("motorDirection").toInt();
+        gmtOffset_sec = server.arg("gmtOffset_sec").toInt();
+ 
         // Store in Preferences for persistence
         preferences.putString("ssid", ssid);
         preferences.putString("password", password);
@@ -313,26 +349,34 @@ void handleConfig() {
         preferences.putInt("delayAfterRun", delayAfterRun);
         preferences.putBool("useMotionSensor", useMotionSensor);
         preferences.putString("printer_model", printer_model);
+        preferences.putInt("motorDirection", motorDirection);
         preferences.putBool("debug", debug);
+        preferences.putInt("gmtOffset_sec", gmtOffset_sec);
 
         preferences.end();  
 
-        server.send(200, "text/html", "<h1>Settings saved! Rebooting...</h1><br><a href=\"/config\">Click here to return to config page</a>");
+        server.send(200, "text/html", "<h1>Settings saved! This page will automatically refresh in 15 seconds...</h1><script>setTimeout(() => { location.reload(); }, 15000);</script><br><br><a href=\"/config\">Refresh now</a>");
 
         delay(1000);
         ESP.restart();
     }
 }
 
-
-
 String formatDateTime(time_t timestamp) {
-    struct tm* timeinfo = localtime(&timestamp);
+    struct tm timeinfo;
+    time_t adjustedTime = timestamp; // Apply timezone
+    localtime_r(&adjustedTime, &timeinfo);  
 
     char buffer[25];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %I:%M:%S %p", &timeinfo); // 12-hour format with AM/PM
 
     return String(buffer);
+}
+
+// Handle Home Assistant status check
+void handleMotorStatus() {
+    String jsonResponse = "{ \"motor_running\": " + String(motorRunning ? "true" : "false") + " }";
+    server.send(200, "application/json", jsonResponse);
 }
 
 void handleLogs() {
@@ -510,6 +554,10 @@ void sendPushAllCommand() {
 }
 
 void setup() {
+    // Initialize logs
+    for (int i = 0; i < MAX_LOG_ENTRIES; i++) {
+        logs[i].timestamp = 0;
+    }
     // Initialize GPIO pins
     pinMode(motor1Pin1, OUTPUT);
     pinMode(motor1Pin2, OUTPUT);
@@ -549,10 +597,11 @@ void setup() {
     motorRunTime = preferences.getInt("motorRunTime", 10000);
     motorWaitTime = preferences.getInt("motorWaitTime", 5000);
     delayAfterRun = preferences.getInt("delayAfterRun", 120000);
+    motorDirection = preferences.getInt("motorDirection", 0);
+    gmtOffset_sec = preferences.getInt("gmtOffset_sec");
 
     // Close Preferences after reading all values
     preferences.end();
-
 
     // Decide if we should connect to WiFi or enter AP mode
     if (strlen(ssid) > 0 && strlen(password) > 0) {
@@ -560,14 +609,11 @@ void setup() {
     } else {
         startWiFiAPMode();
     }
-
-    // Synchronize time with NTP server
-    setupTime();
+    
     delay(2000);
 
     // Set up MQTT if WiFi is connected
     if (WiFi.status() == WL_CONNECTED) {
-        addLogEntry("Wifi connected: " + WiFi.localIP().toString());
         client.setServer(mqtt_server, 8883); // Default MQTT port
         espClient.setInsecure();
         client.setCallback(mqttCallback);
@@ -580,12 +626,14 @@ void setup() {
     server.on("/control", handleControl);
     server.on("/config", handleConfig);
     server.on("/logs", handleLogs);
+    // Register Home Assistant API endpoints
     server.on("/run", handleManualRun);
+    server.on("/status", handleMotorStatus);
+    server.on("/update", HTTP_POST, []() {
+        server.send(200, "text/plain", "Upload complete!");
+    }, handleFirmwareUpload);
 
-    // Initialize logs
-    for (int i = 0; i < MAX_LOG_ENTRIES; i++) {
-        logs[i].timestamp = 0;
-    }
+
 
     // Start Web Server
     server.begin();
@@ -621,6 +669,8 @@ void startWiFiAPMode() {
     digitalWrite(yellowLight, HIGH);
 }
 
+
+
 void connectToWiFi() {
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
@@ -638,8 +688,9 @@ void connectToWiFi() {
     }
 
     if (WiFi.status() == WL_CONNECTED) {
-        isAPMode = false;  // Ensure AP mode is OFF when connected
         digitalWrite(greenLight, HIGH);
+        syncTime();
+        isAPMode = false;  // Ensure AP mode is OFF when connected
         Serial.println("\nWiFi connected. IP: " + WiFi.localIP().toString());
         addLogEntry("Connected to WiFi: " + WiFi.localIP().toString());
     } else {
@@ -692,9 +743,14 @@ void loop() {
         motorRunStartTime = millis();
         digitalWrite(yellowLight, LOW);  
         digitalWrite(redLight, HIGH);    
-        if (debug) Serial.println("Moving Forward");
-        digitalWrite(motor1Pin1, LOW);
-        digitalWrite(motor1Pin2, HIGH);
+        if (debug) Serial.println(String("Moving ") + (motorDirection == 0 ? "Forward" : "Reverse"));
+        if (motorDirection == 0) {
+            digitalWrite(motor1Pin1, LOW);
+            digitalWrite(motor1Pin2, HIGH);
+        } else {
+            digitalWrite(motor1Pin1, HIGH);
+            digitalWrite(motor1Pin2, LOW);
+        }
         addLogEntry("Conveyor Running | MOTOR STARTED");
     }
 
