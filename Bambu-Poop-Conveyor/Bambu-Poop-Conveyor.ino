@@ -10,6 +10,7 @@ char version[10] = "1.3.5";
 #include <PubSubClient.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
+#include <Update.h>
 #include <DNSServer.h>
 #include <time.h> 
 
@@ -32,13 +33,10 @@ char printer_model[5] = "X1";  // Default to X1
 // OPTIONAL: IF YOU WANT ACCURATE LOG TIMES UPDATE YOUR TIMEZONE HERE
 
 //const long gmtOffset_sec = -5 * 3600; // Adjust for your timezone (EST)
-int gmtOffset_sec = -6 * 3600; // Default to CST (GMT-6 hours)
+int gmtOffset_sec = -6; // Default to CST (GMT-6 hours)
 
 // Daylight savings
 const int daylightOffset_sec = 3600; // Adjust for daylight saving time if applicable
-
-
-// --------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // GPIO Pins
 const int greenLight = 19;
@@ -113,23 +111,6 @@ int logIndex = 0;
 // Sync time so we have proper logging
 const char* ntpServer = "pool.ntp.org";
 
-
-void setupTime() {
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    Serial.print("Waiting for time synchronization... ");
-    while (!time(nullptr)) {
-        Serial.print(".");
-        delay(1000);
-    }
-    Serial.println("done.");
-
-    // Print the current time after synchronization
-    time_t now = time(nullptr);
-    Serial.print("Current time: ");
-    Serial.println(ctime(&now));
-}
-
-
 // MQTT state variables
 int printer_stage = -1;
 int printer_sub_stage = -1;
@@ -189,9 +170,55 @@ const char* getStageInfo(int stage) {
 // Function to add log entries
 void addLogEntry(String action) {
     time_t now = time(nullptr);
-    logs[logIndex].timestamp = now;
+
+    logs[logIndex].timestamp = now; // Store raw timestamp (UTC)
     logs[logIndex].action = action;
     logIndex = (logIndex + 1) % MAX_LOG_ENTRIES;
+}
+
+void syncTime() {
+    addLogEntry("Syncing time...");
+    configTime(gmtOffset_sec * 3600, daylightOffset_sec, ntpServer);
+
+    struct tm timeinfo;
+    int retries = 0;
+    while (!getLocalTime(&timeinfo) && retries < 10) {  
+        addLogEntry("Failed to obtain time, retrying...");
+        delay(1000);
+        retries++;
+    }
+
+    if (retries < 10) {
+        char timeString[50];
+        strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        addLogEntry("Time synchronized! ESP32 thinks current time is: " + String(timeString));
+    } else {
+        addLogEntry("Failed to synchronize time after multiple attempts.");
+    }
+}
+
+void handleFirmwareUpload() {
+    HTTPUpload& upload = server.upload();
+    
+    if (upload.status == UPLOAD_FILE_START) {
+        Serial.printf("Firmware update initiated: %s\n", upload.filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { // Start OTA update
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_END) {
+        if (Update.end(true)) { // Finish OTA update
+            Serial.println("Firmware update successful!");
+            server.send(200, "text/html", "<h1>Update Successful! Rebooting...</h1>");
+            delay(1000);
+            ESP.restart();
+        } else {
+            Update.printError(Serial);
+        }
+    }
 }
 
 // Function to handle the control page
@@ -270,14 +297,6 @@ void handleConfig() {
         html += "<label for=\"useMotionSensor\"> Use Motion Sensor (Disables MQTT detection):</label>";
         html += "<input type=\"checkbox\" id=\"useMotionSensor\" name=\"useMotionSensor\" " + String(useMotionSensor ? "checked" : "") + "><br>";
         html += "<label for=\"printer_model\">Printer Model:</label>";
-        html += "<label for=\"gmtOffset_sec\">Timezone:</label>";
-        html += "<select id=\"gmtOffset_sec\" name=\"gmtOffset_sec\">";
-        html += "<option value=\"-5\"" + String((gmtOffset_sec == -5 * 3600) ? " selected" : "") + ">EST (UTC-5)</option>";
-        html += "<option value=\"-6\"" + String((gmtOffset_sec == -6 * 3600) ? " selected" : "") + ">CST (UTC-6)</option>";
-        html += "<option value=\"-7\"" + String((gmtOffset_sec == -7 * 3600) ? " selected" : "") + ">MST (UTC-7)</option>";
-        html += "<option value=\"-8\"" + String((gmtOffset_sec == -8 * 3600) ? " selected" : "") + ">PST (UTC-8)</option>";
-        html += "<option value=\"0\"" + String((gmtOffset_sec == 0) ? " selected" : "") + ">UTC (UTC+0)</option>";
-        html += "</select><br>";
         html += "<select id=\"printer_model\" name=\"printer_model\">";
         html += "<option value=\"X1\"" + String((String(printer_model) == "X1") ? " selected" : "") + ">X1</option>";
         html += "<option value=\"P1\"" + String((String(printer_model) == "P1") ? " selected" : "") + ">P1</option>";
@@ -290,11 +309,12 @@ void handleConfig() {
         html += "</select><br>";
         html += "<label for=\"debug\"> Debug Mode (Reduced performance):</label>";
         html += "<input type=\"checkbox\" id=\"debug\" name=\"debug\" " + String(debug ? "checked" : "") + "><br>";
-        html += "<input type=\"submit\" value=\"Save\">";
-        html += "</form>";
+        html += "<input type=\"submit\" value=\"Save Settings and Reboot\">";
+        html += "<br>";
         html += "<div class=\"links\">";
-        html += "<a href=\"/control\">Control Page</a>";
+        html += "<a href=\"/control\">Motor Manual Control Page</a>";
         html += "<a href=\"/logs\">Logs Page</a>";
+
         html += "</div></div></body></html>";
 
         server.send(200, "text/html", html);
@@ -316,7 +336,7 @@ void handleConfig() {
         useMotionSensor = server.hasArg("useMotionSensor");
         debug = server.hasArg("debug");
         motorDirection = server.arg("motorDirection").toInt();
-        gmtOffset_sec = server.arg("gmtOffset_sec").toInt() * 3600;
+        gmtOffset_sec = server.arg("gmtOffset_sec").toInt();
  
         // Store in Preferences for persistence
         preferences.putString("ssid", ssid);
@@ -335,7 +355,7 @@ void handleConfig() {
 
         preferences.end();  
 
-        server.send(200, "text/html", "<h1>Settings saved! Rebooting...</h1><br><a href=\"/config\">Click here to return to config page</a>");
+        server.send(200, "text/html", "<h1>Settings saved! This page will automatically refresh in 15 seconds...</h1><script>setTimeout(() => { location.reload(); }, 15000);</script><br><br><a href=\"/config\">Refresh now</a>");
 
         delay(1000);
         ESP.restart();
@@ -343,10 +363,12 @@ void handleConfig() {
 }
 
 String formatDateTime(time_t timestamp) {
-    struct tm* timeinfo = localtime(&timestamp);
+    struct tm timeinfo;
+    time_t adjustedTime = timestamp; // Apply timezone
+    localtime_r(&adjustedTime, &timeinfo);  
 
     char buffer[25];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %I:%M:%S %p", &timeinfo); // 12-hour format with AM/PM
 
     return String(buffer);
 }
@@ -532,6 +554,10 @@ void sendPushAllCommand() {
 }
 
 void setup() {
+    // Initialize logs
+    for (int i = 0; i < MAX_LOG_ENTRIES; i++) {
+        logs[i].timestamp = 0;
+    }
     // Initialize GPIO pins
     pinMode(motor1Pin1, OUTPUT);
     pinMode(motor1Pin2, OUTPUT);
@@ -572,6 +598,8 @@ void setup() {
     motorWaitTime = preferences.getInt("motorWaitTime", 5000);
     delayAfterRun = preferences.getInt("delayAfterRun", 120000);
     motorDirection = preferences.getInt("motorDirection", 0);
+    gmtOffset_sec = preferences.getInt("gmtOffset_sec");
+
     // Close Preferences after reading all values
     preferences.end();
 
@@ -581,14 +609,11 @@ void setup() {
     } else {
         startWiFiAPMode();
     }
-
-    // Synchronize time with NTP server
-    setupTime();
+    
     delay(2000);
 
     // Set up MQTT if WiFi is connected
     if (WiFi.status() == WL_CONNECTED) {
-        addLogEntry("Wifi connected: " + WiFi.localIP().toString());
         client.setServer(mqtt_server, 8883); // Default MQTT port
         espClient.setInsecure();
         client.setCallback(mqttCallback);
@@ -604,11 +629,11 @@ void setup() {
     // Register Home Assistant API endpoints
     server.on("/run", handleManualRun);
     server.on("/status", handleMotorStatus);
+    server.on("/update", HTTP_POST, []() {
+        server.send(200, "text/plain", "Upload complete!");
+    }, handleFirmwareUpload);
 
-    // Initialize logs
-    for (int i = 0; i < MAX_LOG_ENTRIES; i++) {
-        logs[i].timestamp = 0;
-    }
+
 
     // Start Web Server
     server.begin();
@@ -644,6 +669,8 @@ void startWiFiAPMode() {
     digitalWrite(yellowLight, HIGH);
 }
 
+
+
 void connectToWiFi() {
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
@@ -661,8 +688,9 @@ void connectToWiFi() {
     }
 
     if (WiFi.status() == WL_CONNECTED) {
-        isAPMode = false;  // Ensure AP mode is OFF when connected
         digitalWrite(greenLight, HIGH);
+        syncTime();
+        isAPMode = false;  // Ensure AP mode is OFF when connected
         Serial.println("\nWiFi connected. IP: " + WiFi.localIP().toString());
         addLogEntry("Connected to WiFi: " + WiFi.localIP().toString());
     } else {
