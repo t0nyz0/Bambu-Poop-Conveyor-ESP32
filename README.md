@@ -154,6 +154,24 @@ The application hosts a web server to provide manual control and configuration. 
 - Make sure the ESP32 has good Wifi signal
 - Reach out to me if you still have issues
 
+### Home Assistant Settings
+
+- Action: Run motor manually
+- Sensor: States if motor is running 
+
+Example yaml
+```
+rest_command:
+  bambu_run_motor:
+    url: "http://11.0.1.54/run"
+    method: POST
+
+sensor:
+  - platform: rest
+    name: "Bambu Motor Status"
+    resource: "http://11.0.1.54/status"
+    value_template: "{{ value_json.motor_running }}"
+```
 
 ## License
 
