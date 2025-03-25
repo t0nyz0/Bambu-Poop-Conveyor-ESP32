@@ -1,8 +1,8 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-// Last updated: 3/9/25
-char version[10] = "1.3.5";
+// Last updated: 3/24/25
+char version[10] = "1.3.6";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -56,7 +56,7 @@ int motorDirection = 0; // Default to 0 (Forward)
 int motor1Pin2 = 21;
 int enable1Pin = 15;
 
-int motorRunTime = 10000; // 10 seconds by default
+int motorRunTime = 5000; // 5 seconds by default
 int motorWaitTime = 5000; // The time to wait to run the motor.
 int delayAfterRun = 120000; // Delay after motor run
 int additionalWaitTime = 0; // Variable to store additional wait time for specific stages
@@ -302,6 +302,8 @@ void handleConfig() {
         html += "<option value=\"P1\"" + String((String(printer_model) == "P1") ? " selected" : "") + ">P1</option>";
         html += "<option value=\"A1\"" + String((String(printer_model) == "A1") ? " selected" : "") + ">A1</option>";
         html += "</select><br>";
+        html += "<label for=\"dutyCycle\">Motor Speed (0-255):</label>";
+        html += "<input type=\"number\" id=\"dutyCycle\" name=\"dutyCycle\" value=\"" + String(dutyCycle) + "\" min=\"0\" max=\"255\"><br>";
         html += "<label for=\"motorDirection\">Motor Direction:</label>";
         html += "<select id=\"motorDirection\" name=\"motorDirection\">";
         html += "<option value=\"0\"" + String((motorDirection == 0) ? " selected" : "") + ">Forward</option>";
@@ -329,7 +331,8 @@ void handleConfig() {
         strcpy(mqtt_password, server.arg("mqtt_password").c_str());
         strcpy(serial_number, server.arg("serial_number").c_str());
         strcpy(printer_model, server.arg("printer_model").c_str());
-
+        
+        dutyCycle = server.arg("dutyCycle").toInt();
         motorRunTime = server.arg("motorRunTime").toInt();
         motorWaitTime = server.arg("motorWaitTime").toInt();
         delayAfterRun = server.arg("delayAfterRun").toInt();
@@ -350,12 +353,13 @@ void handleConfig() {
         preferences.putBool("useMotionSensor", useMotionSensor);
         preferences.putString("printer_model", printer_model);
         preferences.putInt("motorDirection", motorDirection);
+        preferences.putInt("dutyCycle", dutyCycle);
         preferences.putBool("debug", debug);
         preferences.putInt("gmtOffset_sec", gmtOffset_sec);
 
         preferences.end();  
 
-        server.send(200, "text/html", "<h1>Settings saved! This page will automatically refresh in 15 seconds...</h1><script>setTimeout(() => { location.reload(); }, 15000);</script><br><br><a href=\"/config\">Refresh now</a>");
+        server.send(200, "text/html", "<h1>Settings saved! This page will automatically refresh in 15 seconds...</h1><script>setTimeout(() => { window.location.href = '/config'; }, 15000);</script><br><br><a href=\"/config\">Refresh now</a>");
 
         delay(1000);
         ESP.restart();
@@ -599,6 +603,7 @@ void setup() {
     delayAfterRun = preferences.getInt("delayAfterRun", 120000);
     motorDirection = preferences.getInt("motorDirection", 0);
     gmtOffset_sec = preferences.getInt("gmtOffset_sec");
+    dutyCycle = preferences.getInt("dutyCycle", 225);
 
     // Close Preferences after reading all values
     preferences.end();
@@ -670,20 +675,32 @@ void startWiFiAPMode() {
 }
 
 
-
 void connectToWiFi() {
+    const int maxRetries = 20;  // Set a limit for retries
+    int retryCount = 0;
+    
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
 
     unsigned long startAttemptTime = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 15000) {  // Try for 15 sec
+    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 25000) {  // Try for 15 sec
+
+        if (debug) { 
+            Serial.print('.');
+            addLogEntry("Connecting to WiFi... Attempt " + String(retryCount + 1));
+        }
+
         digitalWrite(yellowLight, HIGH);
         delay(500);
         digitalWrite(yellowLight, LOW);
         delay(500);
-        if (debug) { 
-            Serial.print('.');
-            addLogEntry("Connecting to wifi....");
+
+        retryCount++;
+        if (retryCount >= maxRetries) {
+            Serial.println("\nExceeded max WiFi connection attempts, rebooting ESP32...");
+            addLogEntry("Exceeded max WiFi connection attempts, rebooting ESP32...");
+            delay(2000); // Small delay before reboot
+            ESP.restart();
         }
     }
 
@@ -744,6 +761,9 @@ void loop() {
         digitalWrite(yellowLight, LOW);  
         digitalWrite(redLight, HIGH);    
         if (debug) Serial.println(String("Moving ") + (motorDirection == 0 ? "Forward" : "Reverse"));
+        // Apply duty cycle before enabling motor
+        ledcWrite(enable1Pin, dutyCycle);
+
         if (motorDirection == 0) {
             digitalWrite(motor1Pin1, LOW);
             digitalWrite(motor1Pin2, HIGH);
@@ -751,7 +771,7 @@ void loop() {
             digitalWrite(motor1Pin1, HIGH);
             digitalWrite(motor1Pin2, LOW);
         }
-        addLogEntry("Conveyor Running | MOTOR STARTED");
+        addLogEntry("Conveyor Running | MOTOR STARTED | Duty Cycle: " + String(dutyCycle) + " | Direction: " + (motorDirection == 0 ? "Forward" : "Reverse"));
     }
 
     // Motor running logic
