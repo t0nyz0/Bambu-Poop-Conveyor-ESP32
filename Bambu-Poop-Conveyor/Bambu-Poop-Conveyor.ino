@@ -2,7 +2,7 @@
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
 // Last updated: 3/24/25
-char version[10] = "1.3.6";
+char version[10] = "1.3.7";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -17,8 +17,8 @@ char version[10] = "1.3.6";
 //---- SETTINGS YOU SHOULD ENTER --------------------------------------------------------------------------------------------------------------------------
 
 // WiFi credentials
-char ssid[40] = "";
-char password[40] = "";
+char ssid[50] = "";
+char password[50] = "";
 
 // MQTT credentials
 char mqtt_server[40] = "your-bambu-printer-ip";
@@ -112,8 +112,8 @@ int logIndex = 0;
 const char* ntpServer = "pool.ntp.org";
 
 // MQTT state variables
-int printer_stage = -1;
-int printer_sub_stage = -1;
+int printer_stage = -100;
+int printer_sub_stage = -100;
 String printer_real_stage = "";
 String gcodeState = "";
 
@@ -126,6 +126,7 @@ WebServer server(80);
 // Function to get the printer stage description
 const char* getStageInfo(int stage) {
     switch (stage) {
+        case -100: return "Connection Issue";
         case -1: return "Idle";
         case 0: return "Printing";
         case 1: return "Auto Bed Leveling";
@@ -411,7 +412,7 @@ void handleLogs() {
 
 // MQTT callback function
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
-    DynamicJsonDocument doc(20000);
+    DynamicJsonDocument doc(40000);
     DeserializationError error = deserializeJson(doc, payload, length);
 
     if (error) {
@@ -573,7 +574,7 @@ void setup() {
 
     // Start Serial communication
     Serial.begin(115200);
-    client.setBufferSize(20000);
+    client.setBufferSize(40000);
 
     // Configure LED PWM functionalities
     ledcAttachChannel(enable1Pin, freq, resolution, pwmChannel);
