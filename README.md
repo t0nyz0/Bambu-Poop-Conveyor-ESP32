@@ -7,6 +7,8 @@
 ### For more detailed project information visit: https://t0nyz.com/projects/bambuconveyor
 
 ## Overview 
+> [!NOTE]
+> 5/9/2025 - Fixed major bug with Bambus latest firmware updates. Also, now works with H2D!
 
 The Bambu Conveyor is an application designed to manage the waste output of a [Bambu Labs printer](https://bambulab.com/en/x1). It utilizes the MQTT protocol (or Motion Detection) to monitor the printer's status and control a motor that moves waste material away from the printing area. 
 
