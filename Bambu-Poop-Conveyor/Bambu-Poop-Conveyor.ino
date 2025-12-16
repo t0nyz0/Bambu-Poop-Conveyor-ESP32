@@ -1,8 +1,8 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-// Last updated: 3/24/25
-char version[10] = "1.3.7";
+// Last updated: 12/13/25
+char version[10] = "1.3.8";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -24,7 +24,7 @@ char password[50] = "";
 char mqtt_server[40] = "your-bambu-printer-ip";
 char mqtt_password[30] = "your-bambu-printer-accesscode";
 char serial_number[35] = "your-bambu-printer-serial-number";
-// Printer model selection (X1, P1, A1)
+// Printer model selection (X1, P1, A1, H2, P2)
 char printer_model[5] = "X1";  // Default to X1
 
 
@@ -45,6 +45,7 @@ const int redLight = 4;
 
 const int motionSensorPin = 22;  // Adjust the pin as needed
 bool useMotionSensor = false;
+bool onlyRunAtStart = false;
 
 char mqtt_port[6] = "8883";
 char mqtt_user[30] = "bblp";
@@ -56,7 +57,7 @@ int motorDirection = 0; // Default to 0 (Forward)
 int motor1Pin2 = 21;
 int enable1Pin = 15;
 
-int motorRunTime = 5000; // 5 seconds by default
+int motorRunTime = 4000; // 5 seconds by default
 int motorWaitTime = 5000; // The time to wait to run the motor.
 int delayAfterRun = 120000; // Delay after motor run
 int additionalWaitTime = 0; // Variable to store additional wait time for specific stages
@@ -128,42 +129,73 @@ const char* getStageInfo(int stage) {
     switch (stage) {
         case -100: return "Connection Issue";
         case -1: return "Idle";
-        case 0: return "Printing";
-        case 1: return "Auto Bed Leveling";
-        case 2: return "Heatbed Preheating";
-        case 3: return "Sweeping XY Mech Mode";
-        case 4: return "Changing Filament";
-        case 5: return "M400 Pause";
-        case 6: return "Paused due to filament runout";
-        case 7: return "Heating Hotend";
-        case 8: return "Calibrating Extrusion";
-        case 9: return "Scanning Bed Surface";
-        case 10: return "Inspecting First Layer";
-        case 11: return "Identifying Build Plate Type";
+        case 0:  return "Printing";
+        case 1:  return "Auto bed leveling";
+        case 2:  return "Heatbed preheating";
+        case 3:  return "Vibration compensation";
+        case 4:  return "Changing filament";
+        case 5:  return "M400 pause";
+        case 6:  return "Paused (filament ran out)";
+        case 7:  return "Heating nozzle";
+        case 8:  return "Calibrating dynamic flow";
+        case 9:  return "Scanning bed surface";
+        case 10: return "Inspecting first layer";
+        case 11: return "Identifying build plate type";
         case 12: return "Calibrating Micro Lidar";
-        case 13: return "Homing Toolhead";
-        case 14: return "Cleaning Nozzle Tip";
-        case 15: return "Checking Extruder Temperature";
-        case 16: return "Printing was paused by the user";
-        case 17: return "Pause of front cover falling";
-        case 18: return "Calibrating Micro Lidar";
-        case 19: return "Calibrating Extrusion Flow";
-        case 20: return "Paused due to nozzle temperature malfunction";
-        case 21: return "Paused due to heat bed temperature malfunction";
+        case 13: return "Homing toolhead";
+        case 14: return "Cleaning nozzle tip";
+        case 15: return "Checking extruder temperature";
+        case 16: return "Paused by the user";
+        case 17: return "Pause (front cover fall off)";
+        case 18: return "Calibrating the micro lidar";
+        case 19: return "Calibrating flow ratio";
+        case 20: return "Pause (nozzle temperature malfunction)";
+        case 21: return "Pause (heatbed temperature malfunction)";
         case 22: return "Filament unloading";
-        case 23: return "Skip step pause";
+        case 23: return "Pause (step loss)";
         case 24: return "Filament loading";
-        case 25: return "Motor noise calibration";
-        case 26: return "Paused due to AMS lost";
-        case 27: return "Paused due to low speed of the heat break fan";
-        case 28: return "Paused due to chamber temperature control error";
+        case 25: return "Motor noise cancellation";
+        case 26: return "Pause (AMS offline)";
+        case 27: return "Pause (low speed of the heatbreak fan)";
+        case 28: return "Pause (chamber temperature control problem)";
         case 29: return "Cooling chamber";
-        case 30: return "Paused by the Gcode inserted by user";
+        case 30: return "Pause (Gcode inserted by user)";
         case 31: return "Motor noise showoff";
-        case 32: return "Nozzle filament covered detected pause";
-        case 33: return "Cutter error pause";
-        case 34: return "First layer error pause";
-        case 35: return "Nozzle clog pause";
+        case 32: return "Pause (nozzle clumping)";
+        case 33: return "Pause (cutter error)";
+        case 34: return "Pause (first layer error)";
+        case 35: return "Pause (nozzle clog)";
+        case 36: return "Measuring motion precision";
+        case 37: return "Enhancing motion precision";
+        case 38: return "Measure motion accuracy";
+        case 39: return "Nozzle offset calibration";
+        case 40: return "High temperature auto bed leveling";
+        case 41: return "Auto Check: Quick Release Lever";
+        case 42: return "Auto Check: Door and Upper Cover";
+        case 43: return "Laser Calibration";
+        case 44: return "Auto Check: Platform";
+        case 45: return "Confirming BirdsEye Camera location";
+        case 46: return "Calibrating BirdsEye Camera";
+        case 47: return "Auto bed leveling - phase 1";
+        case 48: return "Auto bed leveling - phase 2";
+        case 49: return "Heating chamber";
+        case 50: return "Cooling heatbed";
+        case 51: return "Printing calibration lines";
+        case 52: return "Auto Check: Material";
+        case 53: return "Live View Camera Calibration";
+        case 54: return "Waiting for heatbed to reach target temperature";
+        case 55: return "Auto Check: Material Position";
+        case 56: return "Cutting Module Offset Calibration";
+        case 57: return "Measuring Surface";
+        case 58: return "Thermal preconditioning for first layer optimization";
+        case 59: return "Homing Blade Holder";
+        case 60: return "Calibrating Camera Offset";
+        case 61: return "Calibrating Blade Holder Position";
+        case 62: return "Hotend Pick and Place Test";
+        case 63: return "Waiting for chamber temperature to equalize";
+        case 64: return "Preparing Hotend";
+        case 65: return "Calibrating nozzle clumping detection position";
+        case 66: return "Purifying the chamber air";
         default: return "Unknown stage";
     }
 }
@@ -205,6 +237,7 @@ void handleFirmwareUpload() {
         Serial.printf("Firmware update initiated: %s\n", upload.filename.c_str());
         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { // Start OTA update
             Update.printError(Serial);
+            return;
         }
     } else if (upload.status == UPLOAD_FILE_WRITE) {
         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
@@ -213,12 +246,19 @@ void handleFirmwareUpload() {
     } else if (upload.status == UPLOAD_FILE_END) {
         if (Update.end(true)) { // Finish OTA update
             Serial.println("Firmware update successful!");
-            server.send(200, "text/html", "<h1>Update Successful! Rebooting...</h1>");
-            delay(1000);
+            server.sendHeader("Connection", "close");
+            server.send(200, "text/html; charset=UTF-8", "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body><h1>Update Successful! Rebooting...</h1></body></html>");
+            server.client().stop();
+            delay(2000);
             ESP.restart();
         } else {
             Update.printError(Serial);
+            server.sendHeader("Connection", "close");
+            server.send(500, "text/html; charset=UTF-8", "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body><h1>Update Failed!</h1></body></html>");
         }
+    } else if (upload.status == UPLOAD_FILE_ABORTED) {
+        Update.abort();
+        Serial.println("Update was aborted");
     }
 }
 
@@ -289,19 +329,26 @@ void handleConfig() {
         html += "<form action=\"/config\" method=\"POST\" class=\"info\">";
         html += "<label for=\"ssid\">WiFi SSID:</label><input type=\"text\" id=\"ssid\" name=\"ssid\" value=\"" + String(ssid) + "\"><br>";
         html += "<label for=\"password\">WiFi Password:</label><input type=\"password\" id=\"password\" name=\"password\" value=\"" + String(password) + "\"><br>";
+        html += "<label for=\"gmtOffset_sec\">Time Zone Offset (hours from GMT, e.g. -8 PST, -7 MST, -6 CST, -5 EST):</label>";
+        html += "<input type=\"number\" id=\"gmtOffset_sec\" name=\"gmtOffset_sec\" step=\"1\" min=\"-12\" max=\"14\" value=\"" + String(gmtOffset_sec) + "\"><br>";
         html += "<label for=\"mqtt_server\">Bambu Printer IP Address:</label><input type=\"text\" id=\"mqtt_server\" name=\"mqtt_server\" value=\"" + String(mqtt_server) + "\"><br>";
         html += "<label for=\"mqtt_password\">Bambu Printer Access Code:</label><input type=\"text\" id=\"mqtt_password\" name=\"mqtt_password\" value=\"" + String(mqtt_password) + "\"><br>";
         html += "<label for=\"serial_number\">Bambu Printer Serial Number:</label><input type=\"text\" id=\"serial_number\" name=\"serial_number\" value=\"" + String(serial_number) + "\"><br>";
         html += "<label for=\"motorRunTime\">Motor Run Time (ms):</label><input type=\"number\" id=\"motorRunTime\" name=\"motorRunTime\" value=\"" + String(motorRunTime) + "\"><br>";
         html += "<label for=\"motorWaitTime\">Motor Wait Time (ms):</label><input type=\"number\" id=\"motorWaitTime\" name=\"motorWaitTime\" value=\"" + String(motorWaitTime) + "\"><br>";
         html += "<label for=\"delayAfterRun\">Delay After Run (ms):</label><input type=\"number\" id=\"delayAfterRun\" name=\"delayAfterRun\" value=\"" + String(delayAfterRun) + "\"><br>";
-        html += "<label for=\"useMotionSensor\"> Use Motion Sensor (Disables MQTT detection):</label>";
+        html += "<label for=\"useMotionSensor\">Use Motion Sensor (Disables MQTT detection):</label>";
         html += "<input type=\"checkbox\" id=\"useMotionSensor\" name=\"useMotionSensor\" " + String(useMotionSensor ? "checked" : "") + "><br>";
+
+        html += "<label for=\"onlyRunAtStart\">Only run conveyor at start of print (skip filament changes):</label>";
+        html += "<input type=\"checkbox\" id=\"onlyRunAtStart\" name=\"onlyRunAtStart\" " + String(onlyRunAtStart ? "checked" : "") + "><br>";
+
         html += "<label for=\"printer_model\">Printer Model:</label>";
         html += "<select id=\"printer_model\" name=\"printer_model\">";
         html += "<option value=\"X1\"" + String((String(printer_model) == "X1") ? " selected" : "") + ">X1</option>";
         html += "<option value=\"P1\"" + String((String(printer_model) == "P1") ? " selected" : "") + ">P1</option>";
         html += "<option value=\"A1\"" + String((String(printer_model) == "A1") ? " selected" : "") + ">A1</option>";
+        html += "<option value=\"H2\"" + String((String(printer_model) == "H2") ? " selected" : "") + ">H2</option>";
         html += "</select><br>";
         html += "<label for=\"dutyCycle\">Motor Speed (0-255):</label>";
         html += "<input type=\"number\" id=\"dutyCycle\" name=\"dutyCycle\" value=\"" + String(dutyCycle) + "\" min=\"0\" max=\"255\"><br>";
@@ -313,9 +360,11 @@ void handleConfig() {
         html += "<label for=\"debug\"> Debug Mode (Reduced performance):</label>";
         html += "<input type=\"checkbox\" id=\"debug\" name=\"debug\" " + String(debug ? "checked" : "") + "><br>";
         html += "<input type=\"submit\" value=\"Save Settings and Reboot\">";
+        html += "</form>";          
         html += "<br>";
         html += "<div class=\"links\">";
         html += "<a href=\"/control\">Motor Manual Control Page</a>";
+        html += "<a href=\"/update\">Firmware Update</a>";
         html += "<a href=\"/logs\">Logs Page</a>";
 
         html += "</div></div></body></html>";
@@ -338,6 +387,7 @@ void handleConfig() {
         motorWaitTime = server.arg("motorWaitTime").toInt();
         delayAfterRun = server.arg("delayAfterRun").toInt();
         useMotionSensor = server.hasArg("useMotionSensor");
+        onlyRunAtStart = server.hasArg("onlyRunAtStart");
         debug = server.hasArg("debug");
         motorDirection = server.arg("motorDirection").toInt();
         gmtOffset_sec = server.arg("gmtOffset_sec").toInt();
@@ -352,6 +402,7 @@ void handleConfig() {
         preferences.putInt("motorWaitTime", motorWaitTime);
         preferences.putInt("delayAfterRun", delayAfterRun);
         preferences.putBool("useMotionSensor", useMotionSensor);
+        preferences.putBool("onlyRunAtStart", onlyRunAtStart);
         preferences.putString("printer_model", printer_model);
         preferences.putInt("motorDirection", motorDirection);
         preferences.putInt("dutyCycle", dutyCycle);
@@ -382,6 +433,50 @@ String formatDateTime(time_t timestamp) {
 void handleMotorStatus() {
     String jsonResponse = "{ \"motor_running\": " + String(motorRunning ? "true" : "false") + " }";
     server.send(200, "application/json", jsonResponse);
+}
+
+// Function for web page flash
+
+
+void handleUpdatePage() {
+    String html = "";
+    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'>";
+    html += "<title>Firmware Update</title>";
+    html += "<style>";
+    html += "body{font-family:Arial;background:#f4f4f4;text-align:center;}";
+    html += ".container{max-width:520px;margin:40px auto;background:#fff;padding:20px;border-radius:6px;}";
+    html += ".button{display:none;padding:10px 20px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;}";
+    html += "</style></head><body>";
+
+    html += "<div class='container'>";
+    html += "<h2>Bambu Poop Conveyor Firmware</h2>";
+    html += "<p><b>Current Version:</b> ";
+    html += version;
+    html += "</p>";
+    html += "<p><b>Latest Version:</b> <span id='latestVersion'>Checking...</span></p>";
+    html += "<a id='downloadBtn' class='button'>Download Latest Firmware</a>";
+    html += "<hr>";
+    html += "<form method='POST' action='/update' enctype='multipart/form-data'>";
+    html += "<input type='file' name='firmware' accept='.bin'><br><br>";
+    html += "<input type='submit' value='Upload & Update'>";
+    html += "</form>";
+    html += "<br><a href='/config'>Back to Config</a>";
+    html += "</div>";
+
+    html += "<script>";
+    html += "fetch('https://t0nyz.com/flasher/latest.json')";
+    html += ".then(r=>r.json())";
+    html += ".then(d=>{";
+    html += "document.getElementById('latestVersion').innerText=d.version;";
+    html += "const b=document.getElementById('downloadBtn');";
+    html += "b.href=d.bin;b.style.display='inline-block';";
+    html += "})";
+    html += ".catch(()=>{document.getElementById('latestVersion').innerText='Unavailable';});";
+    html += "</script>";
+
+    html += "</body></html>";
+
+    server.send(200, "text/html", html);
 }
 
 void handleLogs() {
@@ -435,7 +530,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 
     if (!useMotionSensor && !motorWaiting && !motorRunning && !delayAfterRunning && 
-        (printer_stage == 4 || printer_stage == 14 || (printer_sub_stage == 4 && printer_stage != -1))) {
+        (printer_stage == 14 || (!onlyRunAtStart && printer_stage == 4) || (!onlyRunAtStart && printer_sub_stage == 4 && printer_stage != -1))) {
         motorWaiting = true;
         motorWaitStartTime = millis();
         addLogEntry("Status 4 or 14 detected! Running conveyor!!!");
@@ -590,6 +685,7 @@ void setup() {
     String storedMqttPassword = preferences.getString("mqtt_password", "");
     String storedSerialNumber = preferences.getString("serial_number", "");
     useMotionSensor = preferences.getBool("useMotionSensor", false);
+    onlyRunAtStart = preferences.getBool("onlyRunAtStart", false);
     String storedPrinterModel = preferences.getString("printer_model", "X1");  // Default "X1" if missing
     debug = preferences.getBool("debug", false); 
 
@@ -603,7 +699,7 @@ void setup() {
     motorWaitTime = preferences.getInt("motorWaitTime", 5000);
     delayAfterRun = preferences.getInt("delayAfterRun", 120000);
     motorDirection = preferences.getInt("motorDirection", 0);
-    gmtOffset_sec = preferences.getInt("gmtOffset_sec");
+    gmtOffset_sec = preferences.getInt("gmtOffset_sec", -6);
     dutyCycle = preferences.getInt("dutyCycle", 225);
 
     // Close Preferences after reading all values
@@ -635,8 +731,9 @@ void setup() {
     // Register Home Assistant API endpoints
     server.on("/run", handleManualRun);
     server.on("/status", handleMotorStatus);
+    server.on("/update", HTTP_GET, handleUpdatePage);
     server.on("/update", HTTP_POST, []() {
-        server.send(200, "text/plain", "Upload complete!");
+        // Response will be sent by handleFirmwareUpload after upload completes
     }, handleFirmwareUpload);
 
 
@@ -733,7 +830,7 @@ void loop() {
     static unsigned long disconnectedTime = 0; 
 
     // Determine push interval based on printer model
-    unsigned long pushInterval = (strcmp(printer_model, "X1") == 0) ? 30000 : 300000; // 30 sec for X1, 5 min for others
+    unsigned long pushInterval = (strcmp(printer_model, "X1") == 0 || strcmp(printer_model, "H2") == 0) ? 30000 : 300000; // 5 min for others
 
     if (useMotionSensor && digitalRead(motionSensorPin) == HIGH && !motorWaiting && !motorRunning && !delayAfterRunning) {
         motorWaitStartTime = millis();
