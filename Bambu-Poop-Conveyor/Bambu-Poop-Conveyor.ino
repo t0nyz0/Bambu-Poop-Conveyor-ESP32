@@ -2,7 +2,7 @@
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
 // Last updated: 12/13/25
-char version[10] = "1.3.8";
+char version[10] = "1.3.9";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -46,6 +46,7 @@ const int redLight = 4;
 const int motionSensorPin = 22;  // Adjust the pin as needed
 bool useMotionSensor = false;
 bool onlyRunAtStart = false;
+char operationMode[10] = "mqtt";
 
 char mqtt_port[6] = "8883";
 char mqtt_user[30] = "bblp";
@@ -68,8 +69,6 @@ const int pwmChannel = 0;
 const int pwmTimer = 0; 
 const int resolution = 8;
 int dutyCycle = 225;
-
-const char* base64Image = "data:image/webp;base64,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"; 
 
 // Debug flag
 bool debug = true;
@@ -247,9 +246,9 @@ void handleFirmwareUpload() {
         if (Update.end(true)) { // Finish OTA update
             Serial.println("Firmware update successful!");
             server.sendHeader("Connection", "close");
-            server.send(200, "text/html; charset=UTF-8", "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body><h1>Update Successful! Rebooting...</h1></body></html>");
+            server.send(200, "text/html; charset=UTF-8", "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Update Successful</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:50px;background:#f4f4f4;}h1{color:#198754;font-size:2em;margin-bottom:20px;}p{color:#666;font-size:1.1em;margin:10px 0;}.container{max-width:500px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}</style></head><body><div class=\"container\"><h1>✓ Update Successful!</h1><p>The device is now rebooting with the new firmware.</p><p><strong>Please wait 45 seconds...</strong></p><p style=\"color:#999;font-size:0.9em;\">This page will automatically refresh when the device is ready.</p></div><script>setTimeout(function(){window.location.href='/config';},45000);</script></body></html>");
             server.client().stop();
-            delay(2000);
+            delay(5000);  // Give browser time to fully receive the response
             ESP.restart();
         } else {
             Update.printError(Serial);
@@ -305,69 +304,171 @@ void handleManualRun() {
 
 void handleConfig() {
     if (server.method() == HTTP_GET) {
-        String html = "<!DOCTYPE html><html><head><title>Bambu Poop Conveyor</title>";
+                String html = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Bambu Poop Conveyor</title>";
         html += "<style>";
-        html += "body { font-family: Arial, sans-serif; background-color: #d1cdba; color: #333; text-align: center; margin: 0; padding: 0; }";
-        html += ".container { max-width: 600px; margin: 5px auto; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }";
-        html += ".logo img { width: 100px; height: auto; margin-bottom: 0px; }";
-        html += "h2 { font-size: 24px; margin-bottom: 20px; }";
-        html += ".info { text-align: left; }";
-        html += ".info label { display: block; margin: 10px 0 5px; font-weight: bold; }";
-        html += ".info input { width: calc(100% - 20px); padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; }";
-        html += "form { margin-top: 20px; }";
-        html += "input[type=submit] { padding: 10px 20px; border: none; border-radius: 5px; background-color: #28a745; color: white; cursor: pointer; }";
-        html += "input[type=submit]:hover { background-color: ##218838; }";
-        html += ".links a:hover { background-color: ##0056b3; }";
-        html += ".links { margin-top: 20px; }";
-        html += ".links a { display: inline-block; margin: 0 10px; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; }";
-        html += ".links a:hover { background-color: #0056b3; }";
+        html += "body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;background-color:#f8f9fa;color:#212529;margin:0;padding:0;}";
+        html += ".container{max-width:600px;margin:0 auto;padding:1rem;}";
+        html += ".text-center{text-align:center;}";
+        html += ".mb-4{margin-bottom:1.5rem;}";
+        html += ".mb-3{margin-bottom:1rem;}";
+        html += ".mb-2{margin-bottom:0.5rem;}";
+        html += ".mt-4{margin-top:1.5rem;}";
+        html += ".me-2{margin-right:0.5rem;}";
+        html += ".card{background-color:#fff;border:1px solid rgba(0,0,0,.125);border-radius:0.375rem;margin-bottom:1rem;}";
+        html += ".card-header{background-color:rgba(0,0,0,.03);border-bottom:1px solid rgba(0,0,0,.125);padding:0.75rem 1.25rem;border-top-left-radius:0.375rem;border-top-right-radius:0.375rem;}";
+        html += ".card-body{padding:1.25rem;}";
+        html += ".card-header h5{margin:0;font-size:1.25rem;font-weight:500;}";
+        html += ".form-label{display:block;margin-bottom:0.5rem;font-weight:500;}";
+        html += ".form-control{display:block;width:100%;padding:0.375rem 0.75rem;font-size:1rem;font-weight:400;line-height:1.5;color:#212529;background-color:#fff;background-clip:padding-box;border:1px solid #ced4da;border-radius:0.375rem;box-sizing:border-box;}";
+        html += ".form-control:focus{border-color:#86b7fe;outline:0;box-shadow:0 0 0 0.25rem rgba(13,110,253,.25);}";
+        html += ".form-select{display:block;width:100%;padding:0.375rem 2.25rem 0.375rem 0.75rem;font-size:1rem;font-weight:400;line-height:1.5;color:#212529;background-color:#fff;border:1px solid #ced4da;border-radius:0.375rem;box-sizing:border-box;}";
+        html += ".form-select:focus{border-color:#86b7fe;outline:0;box-shadow:0 0 0 0.25rem rgba(13,110,253,.25);}";
+        html += ".form-check{display:block;min-height:1.5rem;padding-left:1.5em;margin-bottom:0.125rem;}";
+        html += ".form-check-input{width:1em;height:1em;margin-top:0.25em;margin-left:-1.5em;vertical-align:top;cursor:pointer;}";
+        html += ".form-check-label{cursor:pointer;}";
+        html += ".btn{display:inline-block;font-weight:400;line-height:1.5;color:#212529;text-align:center;text-decoration:none;vertical-align:middle;cursor:pointer;user-select:none;background-color:transparent;border:1px solid transparent;padding:0.375rem 0.75rem;font-size:1rem;border-radius:0.375rem;}";
+        html += ".btn-primary{color:#fff;background-color:#0d6efd;border-color:#0d6efd;}";
+        html += ".btn-primary:hover{color:#fff;background-color:#0b5ed7;border-color:#0a58ca;}";
+        html += ".btn-success{color:#fff;background-color:#198754;border-color:#198754;}";
+        html += ".btn-success:hover{color:#fff;background-color:#157347;border-color:#146c43;}";
+        html += ".btn-lg{padding:0.5rem 1rem;font-size:1.25rem;border-radius:0.5rem;}";
+        html += ".d-grid{display:grid;}";
+        html += ".img-fluid{max-width:100%;height:auto;}";
+        html += "@media(max-width:576px){.container{padding:0.5rem;}.btn{display:block;width:100%;margin-bottom:0.5rem;}}";
         html += "</style>";
         html += "</head><body>";
-        html += "<div class=\"logo\"><img src=\"" + String(base64Image) + "\" alt=\"Bambu Conveyor Logo\"></div>";
-        html += "<div class=\"container\">";
-        html += "<h2>Bambu Poop Conveyor v" + String(version) + "</h2>";
-        html += "<form action=\"/config\" method=\"POST\" class=\"info\">";
-        html += "<label for=\"ssid\">WiFi SSID:</label><input type=\"text\" id=\"ssid\" name=\"ssid\" value=\"" + String(ssid) + "\"><br>";
-        html += "<label for=\"password\">WiFi Password:</label><input type=\"password\" id=\"password\" name=\"password\" value=\"" + String(password) + "\"><br>";
-        html += "<label for=\"gmtOffset_sec\">Time Zone Offset (hours from GMT, e.g. -8 PST, -7 MST, -6 CST, -5 EST):</label>";
-        html += "<input type=\"number\" id=\"gmtOffset_sec\" name=\"gmtOffset_sec\" step=\"1\" min=\"-12\" max=\"14\" value=\"" + String(gmtOffset_sec) + "\"><br>";
-        html += "<label for=\"mqtt_server\">Bambu Printer IP Address:</label><input type=\"text\" id=\"mqtt_server\" name=\"mqtt_server\" value=\"" + String(mqtt_server) + "\"><br>";
-        html += "<label for=\"mqtt_password\">Bambu Printer Access Code:</label><input type=\"text\" id=\"mqtt_password\" name=\"mqtt_password\" value=\"" + String(mqtt_password) + "\"><br>";
-        html += "<label for=\"serial_number\">Bambu Printer Serial Number:</label><input type=\"text\" id=\"serial_number\" name=\"serial_number\" value=\"" + String(serial_number) + "\"><br>";
-        html += "<label for=\"motorRunTime\">Motor Run Time (ms):</label><input type=\"number\" id=\"motorRunTime\" name=\"motorRunTime\" value=\"" + String(motorRunTime) + "\"><br>";
-        html += "<label for=\"motorWaitTime\">Motor Wait Time (ms):</label><input type=\"number\" id=\"motorWaitTime\" name=\"motorWaitTime\" value=\"" + String(motorWaitTime) + "\"><br>";
-        html += "<label for=\"delayAfterRun\">Delay After Run (ms):</label><input type=\"number\" id=\"delayAfterRun\" name=\"delayAfterRun\" value=\"" + String(delayAfterRun) + "\"><br>";
-        html += "<label for=\"useMotionSensor\">Use Motion Sensor (Disables MQTT detection):</label>";
-        html += "<input type=\"checkbox\" id=\"useMotionSensor\" name=\"useMotionSensor\" " + String(useMotionSensor ? "checked" : "") + "><br>";
-
-        html += "<label for=\"onlyRunAtStart\">Only run conveyor at start of print (skip filament changes):</label>";
-        html += "<input type=\"checkbox\" id=\"onlyRunAtStart\" name=\"onlyRunAtStart\" " + String(onlyRunAtStart ? "checked" : "") + "><br>";
-
-        html += "<label for=\"printer_model\">Printer Model:</label>";
-        html += "<select id=\"printer_model\" name=\"printer_model\">";
+        html += "<div class=\"container my-4\">";
+        html += "<h2 class=\"text-center mb-4\">Bambu Poop Conveyor v" + String(version) + "</h2>";
+        html += "<form action=\"/config\" method=\"POST\">";
+        
+        // Operation Mode Card - FIRST
+        html += "<div class=\"card mb-3\">";
+        html += "<div class=\"card-header\"><h5 class=\"mb-0\">Operation Mode</h5></div>";
+        html += "<div class=\"card-body\">";
+        html += "<div class=\"form-check mb-2\">";
+        html += "<input class=\"form-check-input\" type=\"radio\" name=\"operationMode\" id=\"modeMqtt\" value=\"mqtt\"" + String((String(operationMode) == "mqtt") ? " checked" : "") + ">";
+        html += "<label class=\"form-check-label\" for=\"modeMqtt\">MQTT (Printer Integration)</label>";
+        html += "</div>";
+        html += "<div class=\"form-check\">";
+        html += "<input class=\"form-check-input\" type=\"radio\" name=\"operationMode\" id=\"modeMotion\" value=\"motion\"" + String((String(operationMode) == "motion") ? " checked" : "") + ">";
+        html += "<label class=\"form-check-label\" for=\"modeMotion\">Motion Sensor</label>";
+        html += "</div>";
+        html += "</div></div>";
+        
+        // WiFi Settings Card
+        html += "<div class=\"card mb-3\">";
+        html += "<div class=\"card-header\"><h5 class=\"mb-0\">WiFi Settings</h5></div>";
+        html += "<div class=\"card-body\">";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"ssid\" class=\"form-label\">WiFi SSID:</label>";
+        html += "<input type=\"text\" class=\"form-control\" id=\"ssid\" name=\"ssid\" value=\"" + String(ssid) + "\">";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"password\" class=\"form-label\">WiFi Password:</label>";
+        html += "<input type=\"password\" class=\"form-control\" id=\"password\" name=\"password\" value=\"" + String(password) + "\">";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"gmtOffset_sec\" class=\"form-label\">Time Zone Offset (hours from GMT, e.g. -8 PST, -7 MST, -6 CST, -5 EST):</label>";
+        html += "<input type=\"number\" class=\"form-control\" id=\"gmtOffset_sec\" name=\"gmtOffset_sec\" step=\"1\" min=\"-12\" max=\"14\" value=\"" + String(gmtOffset_sec) + "\">";
+        html += "</div>";
+        html += "</div></div>";
+        
+        // Printer Settings Card - Hidden when motion mode selected
+        html += "<div class=\"card mb-3\" id=\"printerSettings\">";
+        html += "<div class=\"card-header\"><h5 class=\"mb-0\">Printer Settings</h5></div>";
+        html += "<div class=\"card-body\">";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"mqtt_server\" class=\"form-label\">Bambu Printer IP Address:</label>";
+        html += "<input type=\"text\" class=\"form-control\" id=\"mqtt_server\" name=\"mqtt_server\" value=\"" + String(mqtt_server) + "\">";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"mqtt_password\" class=\"form-label\">Bambu Printer Access Code:</label>";
+        html += "<input type=\"text\" class=\"form-control\" id=\"mqtt_password\" name=\"mqtt_password\" value=\"" + String(mqtt_password) + "\">";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"serial_number\" class=\"form-label\">Bambu Printer Serial Number:</label>";
+        html += "<input type=\"text\" class=\"form-control\" id=\"serial_number\" name=\"serial_number\" value=\"" + String(serial_number) + "\">";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"printer_model\" class=\"form-label\">Printer Model:</label>";
+        html += "<select class=\"form-select\" id=\"printer_model\" name=\"printer_model\">";
         html += "<option value=\"X1\"" + String((String(printer_model) == "X1") ? " selected" : "") + ">X1</option>";
         html += "<option value=\"P1\"" + String((String(printer_model) == "P1") ? " selected" : "") + ">P1</option>";
         html += "<option value=\"A1\"" + String((String(printer_model) == "A1") ? " selected" : "") + ">A1</option>";
         html += "<option value=\"H2\"" + String((String(printer_model) == "H2") ? " selected" : "") + ">H2</option>";
-        html += "</select><br>";
-        html += "<label for=\"dutyCycle\">Motor Speed (0-255):</label>";
-        html += "<input type=\"number\" id=\"dutyCycle\" name=\"dutyCycle\" value=\"" + String(dutyCycle) + "\" min=\"0\" max=\"255\"><br>";
-        html += "<label for=\"motorDirection\">Motor Direction:</label>";
-        html += "<select id=\"motorDirection\" name=\"motorDirection\">";
+        html += "</select>";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<div class=\"form-check\">";
+        html += "<input class=\"form-check-input\" type=\"checkbox\" id=\"onlyRunAtStart\" name=\"onlyRunAtStart\"" + String(onlyRunAtStart ? " checked" : "") + ">";
+        html += "<label class=\"form-check-label\" for=\"onlyRunAtStart\">Only run conveyor at start of print (skip filament changes)</label>";
+        html += "</div>";
+        html += "</div>";
+        html += "</div></div>";
+        
+        // Motor Settings Card - Always visible
+        html += "<div class=\"card mb-3\">";
+        html += "<div class=\"card-header\"><h5 class=\"mb-0\">Motor Settings</h5></div>";
+        html += "<div class=\"card-body\">";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"motorRunTime\" class=\"form-label\">Motor Run Time (ms):</label>";
+        html += "<input type=\"number\" class=\"form-control\" id=\"motorRunTime\" name=\"motorRunTime\" value=\"" + String(motorRunTime) + "\">";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"motorWaitTime\" class=\"form-label\">Motor Wait Time (ms):</label>";
+        html += "<input type=\"number\" class=\"form-control\" id=\"motorWaitTime\" name=\"motorWaitTime\" value=\"" + String(motorWaitTime) + "\">";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"delayAfterRun\" class=\"form-label\">Delay After Run (ms):</label>";
+        html += "<input type=\"number\" class=\"form-control\" id=\"delayAfterRun\" name=\"delayAfterRun\" value=\"" + String(delayAfterRun) + "\">";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"dutyCycle\" class=\"form-label\">Motor Speed (0-255):</label>";
+        html += "<input type=\"number\" class=\"form-control\" id=\"dutyCycle\" name=\"dutyCycle\" value=\"" + String(dutyCycle) + "\" min=\"0\" max=\"255\">";
+        html += "</div>";
+        html += "<div class=\"mb-3\">";
+        html += "<label for=\"motorDirection\" class=\"form-label\">Motor Direction:</label>";
+        html += "<select class=\"form-select\" id=\"motorDirection\" name=\"motorDirection\">";
         html += "<option value=\"0\"" + String((motorDirection == 0) ? " selected" : "") + ">Forward</option>";
         html += "<option value=\"1\"" + String((motorDirection == 1) ? " selected" : "") + ">Reverse</option>";
-        html += "</select><br>";
-        html += "<label for=\"debug\"> Debug Mode (Reduced performance):</label>";
-        html += "<input type=\"checkbox\" id=\"debug\" name=\"debug\" " + String(debug ? "checked" : "") + "><br>";
-        html += "<input type=\"submit\" value=\"Save Settings and Reboot\">";
-        html += "</form>";          
-        html += "<br>";
-        html += "<div class=\"links\">";
-        html += "<a href=\"/control\">Motor Manual Control Page</a>";
-        html += "<a href=\"/update\">Firmware Update</a>";
-        html += "<a href=\"/logs\">Logs Page</a>";
-
-        html += "</div></div></body></html>";
+        html += "</select>";
+        html += "</div>";
+        html += "</div></div>";
+        
+        // Debug Settings Card
+        html += "<div class=\"card mb-3\">";
+        html += "<div class=\"card-header\"><h5 class=\"mb-0\">Debug Settings</h5></div>";
+        html += "<div class=\"card-body\">";
+        html += "<div class=\"form-check\">";
+        html += "<input class=\"form-check-input\" type=\"checkbox\" id=\"debug\" name=\"debug\"" + String(debug ? " checked" : "") + ">";
+        html += "<label class=\"form-check-label\" for=\"debug\">Debug Mode (Reduced performance)</label>";
+        html += "</div>";
+        html += "</div></div>";
+        
+        // Submit button
+        html += "<div class=\"d-grid\">";
+        html += "<button type=\"submit\" class=\"btn btn-success btn-lg\">Save Settings and Reboot</button>";
+        html += "</div>";
+        html += "</form>";
+        
+        // Links
+        html += "<div class=\"text-center mt-4\">";
+        html += "<a href=\"/control\" class=\"btn btn-primary me-2\">Motor Manual Control Page</a>";
+        html += "<a href=\"/update\" class=\"btn btn-primary me-2\">Firmware Update</a>";
+        html += "<a href=\"/logs\" class=\"btn btn-primary\">Logs Page</a>";
+        html += "</div>";
+        
+        html += "</div>";
+        
+        html += "<script>";
+        html += "function togglePrinterSettings() {";
+        html += "  document.getElementById('printerSettings').style.display = document.getElementById('modeMqtt').checked ? 'block' : 'none';";
+        html += "}";
+        html += "document.getElementById('modeMqtt').addEventListener('change', togglePrinterSettings);";
+        html += "document.getElementById('modeMotion').addEventListener('change', togglePrinterSettings);";
+        html += "togglePrinterSettings();";
+        html += "</script>";
+        html += "</body></html>";
 
         server.send(200, "text/html", html);
     } 
@@ -386,7 +487,8 @@ void handleConfig() {
         motorRunTime = server.arg("motorRunTime").toInt();
         motorWaitTime = server.arg("motorWaitTime").toInt();
         delayAfterRun = server.arg("delayAfterRun").toInt();
-        useMotionSensor = server.hasArg("useMotionSensor");
+        strcpy(operationMode, server.arg("operationMode").c_str());
+        useMotionSensor = (String(operationMode) == "motion");
         onlyRunAtStart = server.hasArg("onlyRunAtStart");
         debug = server.hasArg("debug");
         motorDirection = server.arg("motorDirection").toInt();
@@ -401,7 +503,7 @@ void handleConfig() {
         preferences.putInt("motorRunTime", motorRunTime);
         preferences.putInt("motorWaitTime", motorWaitTime);
         preferences.putInt("delayAfterRun", delayAfterRun);
-        preferences.putBool("useMotionSensor", useMotionSensor);
+        preferences.putString("operationMode", operationMode);
         preferences.putBool("onlyRunAtStart", onlyRunAtStart);
         preferences.putString("printer_model", printer_model);
         preferences.putInt("motorDirection", motorDirection);
@@ -417,6 +519,8 @@ void handleConfig() {
         ESP.restart();
     }
 }
+
+// Function to handle the root URL
 
 String formatDateTime(time_t timestamp) {
     struct tm timeinfo;
@@ -684,7 +788,9 @@ void setup() {
     String storedMqttServer = preferences.getString("mqtt_server", "");
     String storedMqttPassword = preferences.getString("mqtt_password", "");
     String storedSerialNumber = preferences.getString("serial_number", "");
-    useMotionSensor = preferences.getBool("useMotionSensor", false);
+    String storedMode = preferences.getString("operationMode", "mqtt");
+    storedMode.toCharArray(operationMode, sizeof(operationMode));
+    useMotionSensor = (String(operationMode) == "motion");
     onlyRunAtStart = preferences.getBool("onlyRunAtStart", false);
     String storedPrinterModel = preferences.getString("printer_model", "X1");  // Default "X1" if missing
     debug = preferences.getBool("debug", false); 
