@@ -245,10 +245,13 @@ void handleFirmwareUpload() {
     } else if (upload.status == UPLOAD_FILE_END) {
         if (Update.end(true)) { // Finish OTA update
             Serial.println("Firmware update successful!");
+            // Send success page, then restart immediately - let client-side JS handle the wait
+            String redirectUrl = "http://" + WiFi.localIP().toString() + "/config";
+            String html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Update Successful</title></head><body><h1>Update Successful!</h1><p>Device is rebooting...</p><p id=\"status\">Waiting for device to restart...</p><script>var u=\"" + redirectUrl + "\";var a=0;function c(){a++;fetch(u,{cache:'no-cache'}).then(function(r){if(r.ok){document.getElementById('status').textContent='Device is ready! Redirecting...';window.location.href=u;}else{if(a<60){document.getElementById('status').textContent='Waiting for device... ('+a+'/60)';setTimeout(c,2000);}else{window.location.href=u;}}}).catch(function(){if(a<60){document.getElementById('status').textContent='Waiting for device... ('+a+'/60)';setTimeout(c,2000);}else{window.location.href=u;}});}setTimeout(c,5000);</script></body></html>";
             server.sendHeader("Connection", "close");
-            server.send(200, "text/html; charset=UTF-8", "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Update Successful</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:50px;background:#f4f4f4;}h1{color:#198754;font-size:2em;margin-bottom:20px;}p{color:#666;font-size:1.1em;margin:10px 0;}.container{max-width:500px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}</style></head><body><div class=\"container\"><h1>✓ Update Successful!</h1><p>The device is now rebooting with the new firmware.</p><p><strong>Please wait 45 seconds...</strong></p><p style=\"color:#999;font-size:0.9em;\">This page will automatically refresh when the device is ready.</p></div><script>setTimeout(function(){window.location.href='/config';},45000);</script></body></html>");
-            server.client().stop();
-            delay(5000);  // Give browser time to fully receive the response
+            server.send(200, "text/html", html);
+            server.client().flush();
+            delay(2000);  // Brief delay to ensure response starts sending, then restart
             ESP.restart();
         } else {
             Update.printError(Serial);
@@ -544,30 +547,70 @@ void handleMotorStatus() {
 
 void handleUpdatePage() {
     String html = "";
-    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'>";
-    html += "<title>Firmware Update</title>";
+    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Firmware Update</title>";
     html += "<style>";
-    html += "body{font-family:Arial;background:#f4f4f4;text-align:center;}";
-    html += ".container{max-width:520px;margin:40px auto;background:#fff;padding:20px;border-radius:6px;}";
-    html += ".button{display:none;padding:10px 20px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;}";
+    html += "body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;background-color:#f8f9fa;color:#212529;margin:0;padding:0;}";
+    html += ".container{max-width:600px;margin:0 auto;padding:1rem;}";
+    html += ".card{background-color:#fff;border:1px solid rgba(0,0,0,.125);border-radius:0.375rem;margin-bottom:1rem;padding:1.25rem;}";
+    html += ".text-center{text-align:center;}";
+    html += ".mb-3{margin-bottom:1rem;}";
+    html += "h2{margin-top:0;}";
+    html += ".btn{display:inline-block;font-weight:400;line-height:1.5;color:#212529;text-align:center;text-decoration:none;vertical-align:middle;cursor:pointer;user-select:none;background-color:transparent;border:1px solid transparent;padding:0.375rem 0.75rem;font-size:1rem;border-radius:0.375rem;transition:color 0.15s ease-in-out,background-color 0.15s ease-in-out,border-color 0.15s ease-in-out;}";
+    html += ".btn-primary{color:#fff;background-color:#0d6efd;border-color:#0d6efd;}";
+    html += ".btn-primary:hover{color:#fff;background-color:#0b5ed7;border-color:#0a58ca;}";
+    html += ".btn-success{color:#fff;background-color:#198754;border-color:#198754;}";
+    html += ".btn-success:hover{color:#fff;background-color:#157347;border-color:#146c43;}";
+    html += ".btn:disabled{opacity:0.65;cursor:not-allowed;}";
+    html += ".form-control{display:block;width:100%;padding:0.375rem 0.75rem;font-size:1rem;font-weight:400;line-height:1.5;color:#212529;background-color:#fff;background-clip:padding-box;border:1px solid #ced4da;border-radius:0.375rem;box-sizing:border-box;margin-bottom:1rem;}";
+    html += ".form-control:focus{border-color:#86b7fe;outline:0;box-shadow:0 0 0 0.25rem rgba(13,110,253,.25);}";
+    html += "#uploadProgress{display:none;margin-top:20px;padding:15px;background:#e7f3ff;border-radius:0.375rem;}";
+    html += "#progressBar{width:0%;height:20px;background:#007bff;border-radius:0.375rem;transition:width 0.3s;}";
+    html += ".progress-container{width:100%;background:#ddd;border-radius:0.375rem;overflow:hidden;margin-top:10px;}";
     html += "</style></head><body>";
 
     html += "<div class='container'>";
-    html += "<h2>Bambu Poop Conveyor Firmware</h2>";
-    html += "<p><b>Current Version:</b> ";
-    html += version;
-    html += "</p>";
-    html += "<p><b>Latest Version:</b> <span id='latestVersion'>Checking...</span></p>";
-    html += "<a id='downloadBtn' class='button'>Download Latest Firmware</a>";
+    html += "<div class='card'>";
+    html += "<h2 class='text-center'>Bambu Poop Conveyor Firmware</h2>";
+    html += "<p class='text-center'><b>Current Version:</b> " + String(version) + "</p>";
+    html += "<p class='text-center'><b>Latest Version:</b> <span id='latestVersion'>Checking...</span></p>";
+    html += "<div class='text-center mb-3'><a id='downloadBtn' class='btn btn-primary' style='display:none;'>Download Latest Firmware</a></div>";
     html += "<hr>";
-    html += "<form method='POST' action='/update' enctype='multipart/form-data'>";
-    html += "<input type='file' name='firmware' accept='.bin'><br><br>";
-    html += "<input type='submit' value='Upload & Update'>";
-    html += "</form>";
-    html += "<br><a href='/config'>Back to Config</a>";
+    html += "<form method='POST' action='/update' enctype='multipart/form-data' id='updateForm'>";
+    html += "<input type='file' name='firmware' accept='.bin' id='firmwareFile' class='form-control' required>";
+    html += "<div class='d-grid' style='display:grid;'>";
+    html += "<input type='submit' value='Upload & Update' id='submitBtn' class='btn btn-success' style='width:100%;'>";
     html += "</div>";
+    html += "</form>";
+    html += "<div id='uploadProgress'>";
+    html += "<p><strong>Uploading firmware...</strong></p>";
+    html += "<p>Please wait, this may take a minute. Do not close this page.</p>";
+    html += "<div class='progress-container'>";
+    html += "<div id='progressBar'></div>";
+    html += "</div>";
+    html += "</div>";
+    html += "<div class='text-center mt-4' style='margin-top:1rem;'><a href='/config' class='btn btn-primary'>Back to Config</a></div>";
+    html += "</div></div>";
 
     html += "<script>";
+        html += "document.addEventListener('DOMContentLoaded',function(){";
+        html += "var form=document.getElementById('updateForm');";
+        html += "if(form){";
+        html += "form.addEventListener('submit',function(e){";
+        html += "var fileInput=document.getElementById('firmwareFile');";
+        html += "if(!fileInput.files.length){e.preventDefault();alert('Please select a file');return false;}";
+        html += "document.getElementById('uploadProgress').style.display='block';";
+        html += "document.getElementById('submitBtn').disabled=true;";
+        html += "document.getElementById('submitBtn').value='Uploading... Please wait...';";
+        html += "var progress=0;";
+        html += "var interval=setInterval(function(){";
+        html += "progress+=2;";
+        html += "if(progress>85)progress=85;";
+        html += "document.getElementById('progressBar').style.width=progress+'%';";
+        html += "},800);";
+        html += "return true;";
+        html += "});";
+        html += "}";
+        html += "});";
     html += "fetch('https://t0nyz.com/flasher/latest.json')";
     html += ".then(r=>r.json())";
     html += ".then(d=>{";
