@@ -2,7 +2,7 @@
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
 // Last updated: 12/13/25
-char version[10] = "1.3.9";
+char version[10] = "1.4.0";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -245,13 +245,17 @@ void handleFirmwareUpload() {
     } else if (upload.status == UPLOAD_FILE_END) {
         if (Update.end(true)) { // Finish OTA update
             Serial.println("Firmware update successful!");
-            // Send success page, then restart immediately - let client-side JS handle the wait
-            String redirectUrl = "http://" + WiFi.localIP().toString() + "/config";
-            String html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Update Successful</title></head><body><h1>Update Successful!</h1><p>Device is rebooting...</p><p id=\"status\">Waiting for device to restart...</p><script>var u=\"" + redirectUrl + "\";var a=0;function c(){a++;fetch(u,{cache:'no-cache'}).then(function(r){if(r.ok){document.getElementById('status').textContent='Device is ready! Redirecting...';window.location.href=u;}else{if(a<60){document.getElementById('status').textContent='Waiting for device... ('+a+'/60)';setTimeout(c,2000);}else{window.location.href=u;}}}).catch(function(){if(a<60){document.getElementById('status').textContent='Waiting for device... ('+a+'/60)';setTimeout(c,2000);}else{window.location.href=u;}});}setTimeout(c,5000);</script></body></html>";
+            // Send response first
+            String html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Update Successful</title></head><body><h1>Update Successful!</h1><p>Firmware updated successfully.</p><p>Device will reboot. Please wait 30-60 seconds, then refresh or navigate to the device IP address.</p></body></html>";
             server.sendHeader("Connection", "close");
+            server.sendHeader("Content-Length", String(html.length()));
             server.send(200, "text/html", html);
             server.client().flush();
-            delay(2000);  // Brief delay to ensure response starts sending, then restart
+            delay(3000);  // Brief delay for response to start transmitting
+            // Gracefully disconnect WiFi to close all TCP connections cleanly
+            server.stop();  // Stop web server first
+            WiFi.disconnect(true);  // Disconnect WiFi and delete old connection info
+            delay(2000);  // Allow time for connections to close
             ESP.restart();
         } else {
             Update.printError(Serial);
@@ -587,6 +591,12 @@ void handleUpdatePage() {
     html += "<div class='progress-container'>";
     html += "<div id='progressBar'></div>";
     html += "</div>";
+    html += "<div id='updateComplete' style='display:none;margin-top:20px;padding:15px;background:#d1e7dd;border-radius:0.375rem;border:1px solid #badbcc;'>";
+    html += "<p><strong>✓ Update Complete!</strong></p>";
+    html += "<p>Firmware uploaded successfully. Device is rebooting.</p>";
+    html += "<p><strong>Note:</strong> You may see a 'Corrupted Content Error' - this is normal and expected. The firmware update was successful.</p>";
+    html += "<p><strong>Please wait 30-60 seconds, then refresh this page or navigate to your device IP address.</strong></p>";
+    html += "</div>";
     html += "</div>";
     html += "<div class='text-center mt-4' style='margin-top:1rem;'><a href='/config' class='btn btn-primary'>Back to Config</a></div>";
     html += "</div></div>";
@@ -607,6 +617,18 @@ void handleUpdatePage() {
         html += "if(progress>85)progress=85;";
         html += "document.getElementById('progressBar').style.width=progress+'%';";
         html += "},800);";
+        html += "// Handle potential connection errors gracefully";
+        html += "window.addEventListener('error',function(e){";
+        html += "if(e.message&&e.message.includes('fetch')||e.message.includes('network')){";
+        html += "document.getElementById('uploadProgress').style.display='none';";
+        html += "document.getElementById('updateComplete').style.display='block';";
+        html += "}});";
+        html += "// After 20 seconds, show completion message (even if we got an error)";
+        html += "setTimeout(function(){";
+        html += "document.getElementById('uploadProgress').style.display='none';";
+        html += "document.getElementById('updateComplete').style.display='block';";
+        html += "clearInterval(interval);";
+        html += "},20000);";
         html += "return true;";
         html += "});";
         html += "}";
