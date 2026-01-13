@@ -2,7 +2,7 @@
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
 // Last updated: 12/13/25
-char version[10] = "1.4.0";
+char version[10] = "1.4.2";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -602,45 +602,42 @@ void handleUpdatePage() {
     html += "</div></div>";
 
     html += "<script>";
-        html += "document.addEventListener('DOMContentLoaded',function(){";
-        html += "var form=document.getElementById('updateForm');";
-        html += "if(form){";
-        html += "form.addEventListener('submit',function(e){";
-        html += "var fileInput=document.getElementById('firmwareFile');";
-        html += "if(!fileInput.files.length){e.preventDefault();alert('Please select a file');return false;}";
-        html += "document.getElementById('uploadProgress').style.display='block';";
-        html += "document.getElementById('submitBtn').disabled=true;";
-        html += "document.getElementById('submitBtn').value='Uploading... Please wait...';";
-        html += "var progress=0;";
-        html += "var interval=setInterval(function(){";
-        html += "progress+=2;";
-        html += "if(progress>85)progress=85;";
-        html += "document.getElementById('progressBar').style.width=progress+'%';";
-        html += "},800);";
-        html += "// Handle potential connection errors gracefully";
-        html += "window.addEventListener('error',function(e){";
-        html += "if(e.message&&e.message.includes('fetch')||e.message.includes('network')){";
-        html += "document.getElementById('uploadProgress').style.display='none';";
-        html += "document.getElementById('updateComplete').style.display='block';";
-        html += "}});";
-        html += "// After 20 seconds, show completion message (even if we got an error)";
-        html += "setTimeout(function(){";
-        html += "document.getElementById('uploadProgress').style.display='none';";
-        html += "document.getElementById('updateComplete').style.display='block';";
-        html += "clearInterval(interval);";
-        html += "},20000);";
-        html += "return true;";
-        html += "});";
-        html += "}";
-        html += "});";
-    html += "fetch('https://t0nyz.com/flasher/latest.json')";
-    html += ".then(r=>r.json())";
-    html += ".then(d=>{";
-    html += "document.getElementById('latestVersion').innerText=d.version;";
-    html += "const b=document.getElementById('downloadBtn');";
-    html += "b.href=d.bin;b.style.display='inline-block';";
+    html += "(function(){";
+    html += "var form=document.getElementById('updateForm');";
+    html += "if(form){";
+    html += "form.addEventListener('submit',function(e){";
+    html += "var fileInput=document.getElementById('firmwareFile');";
+    html += "if(!fileInput.files.length){e.preventDefault();alert('Please select a file');return false;}";
+    html += "document.getElementById('uploadProgress').style.display='block';";
+    html += "document.getElementById('submitBtn').disabled=true;";
+    html += "document.getElementById('submitBtn').value='Uploading... Please wait...';";
+    html += "var progress=0;";
+    html += "var interval=setInterval(function(){";
+    html += "progress+=2;";
+    html += "if(progress>85)progress=85;";
+    html += "document.getElementById('progressBar').style.width=progress+'%';";
+    html += "},800);";
+    html += "setTimeout(function(){";
+    html += "document.getElementById('uploadProgress').style.display='none';";
+    html += "document.getElementById('updateComplete').style.display='block';";
+    html += "clearInterval(interval);";
+    html += "},20000);";
+    html += "return true;";
+    html += "});";
+    html += "}";
+    html += "fetch('https://t0nyz.com/flasher/latest.json',{mode:'cors',cache:'no-cache'})";
+    html += ".then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})";
+    html += ".then(function(d){";
+    html += "var el=document.getElementById('latestVersion');";
+    html += "if(el)el.innerText=d.version;";
+    html += "var btn=document.getElementById('downloadBtn');";
+    html += "if(btn){btn.href=d.bin;btn.style.display='inline-block';}";
     html += "})";
-    html += ".catch(()=>{document.getElementById('latestVersion').innerText='Unavailable';});";
+    html += ".catch(function(e){";
+    html += "var el=document.getElementById('latestVersion');";
+    html += "if(el)el.innerText='Unavailable';";
+    html += "});";
+    html += "})();";
     html += "</script>";
 
     html += "</body></html>";
