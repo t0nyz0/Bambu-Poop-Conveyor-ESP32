@@ -1,0 +1,73 @@
+name: Firmware Build
+
+on:
+  push:
+    branches:
+      - Bambu-Conveyor-ESP32
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: PlatformIO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            ~/.platformio/platforms
+          key: ${{ runner.os }}-platformio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-
+
+      - name: Install PlatformIO Core
+        run: python -m pip install --upgrade platformio
+
+      - name: Verify embedded web interface
+        run: |
+          python scripts/generate_ui.py
+          git diff --exit-code -- Bambu-Poop-Conveyor/generated_ui.h
+
+      - name: Build ESP32 firmware
+        run: pio run
+
+      - name: Summarize firmware size
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          firmware = Path(".pio/build/esp32dev/firmware.bin")
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as summary:
+              summary.write("## ESP32 firmware\n\n")
+              summary.write(f"OTA application image: **{firmware.stat().st_size:,} bytes**\n")
+          PY
+
+      - name: Upload OTA build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: bambu-poop-conveyor-ota-${{ github.sha }}
+          path: .pio/build/esp32dev/firmware.bin
+          if-no-files-found: error
+          retention-days: 14

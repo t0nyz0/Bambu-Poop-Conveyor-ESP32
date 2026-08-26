@@ -11,7 +11,8 @@
   <p>
     <a href="https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/t0nyz0/Bambu-Poop-Conveyor-ESP32?display_name=tag&amp;sort=semver&amp;style=flat-square"></a>
     <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/t0nyz0/Bambu-Poop-Conveyor-ESP32?style=flat-square"></a>
-    <img alt="PlatformIO build" src="https://img.shields.io/badge/build-PlatformIO-f5822a?style=flat-square&amp;logo=platformio&amp;logoColor=white">
+    <a href="https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/actions/workflows/firmware-build.yml"><img alt="Firmware build status" src="https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/actions/workflows/firmware-build.yml/badge.svg?branch=Bambu-Conveyor-ESP32"></a>
+    <img alt="PlatformIO" src="https://img.shields.io/badge/tool-PlatformIO-f5822a?style=flat-square&amp;logo=platformio&amp;logoColor=white">
     <img alt="ESP32" src="https://img.shields.io/badge/platform-ESP32-e7352c?style=flat-square&amp;logo=espressif&amp;logoColor=white">
     <a href="https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/t0nyz0/Bambu-Poop-Conveyor-ESP32?style=flat-square"></a>
   </p>
@@ -20,6 +21,8 @@
     <a href="https://t0nyz.com/flasher"><strong>Web Installer</strong></a>
     &nbsp;·&nbsp;
     <a href="https://t0nyz.com/projects/year-2025/bambuconveyor"><strong>Project Guide</strong></a>
+    &nbsp;·&nbsp;
+    <a href="CONTRIBUTING.md"><strong>Contributing</strong></a>
   </p>
 
   <p>➡️ &nbsp;➡️ &nbsp;💩 &nbsp;➡️ &nbsp;➡️ &nbsp;💩 &nbsp;➡️ &nbsp;➡️</p>
