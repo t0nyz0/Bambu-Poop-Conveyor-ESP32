@@ -1,13 +1,32 @@
-# Bambu Poop Conveyor for ESP32
-
-<p align="center">
+<div align="center">
   <img src="assets/bambu-conveyor-logo.svg" width="112" alt="Bambu Poop Conveyor logo">
-</p>
 
-:arrow_right: :arrow_right: :poop: :arrow_right: :arrow_right: :poop: :arrow_right: :arrow_right:
+  <h1>Bambu Poop Conveyor for ESP32</h1>
+
+  <p>
+    <strong>A smart conveyor controller for Bambu Lab printers.</strong><br>
+    Automate waste removal with MQTT or motion detection, configurable trigger rules, and a built-in web control center.
+  </p>
+
+  <p>
+    <a href="https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/t0nyz0/Bambu-Poop-Conveyor-ESP32?display_name=tag&amp;sort=semver&amp;style=flat-square"></a>
+    <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/t0nyz0/Bambu-Poop-Conveyor-ESP32?style=flat-square"></a>
+    <img alt="PlatformIO build" src="https://img.shields.io/badge/build-PlatformIO-f5822a?style=flat-square&amp;logo=platformio&amp;logoColor=white">
+    <img alt="ESP32" src="https://img.shields.io/badge/platform-ESP32-e7352c?style=flat-square&amp;logo=espressif&amp;logoColor=white">
+    <a href="https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/t0nyz0/Bambu-Poop-Conveyor-ESP32?style=flat-square"></a>
+  </p>
+
+  <p>
+    <a href="https://t0nyz.com/flasher"><strong>Web Installer</strong></a>
+    &nbsp;·&nbsp;
+    <a href="https://t0nyz.com/projects/year-2025/bambuconveyor"><strong>Project Guide</strong></a>
+  </p>
+
+  <p>➡️ &nbsp;➡️ &nbsp;💩 &nbsp;➡️ &nbsp;➡️ &nbsp;💩 &nbsp;➡️ &nbsp;➡️</p>
+</div>
 
 > [!TIP] 
-> The public installer is at https://t0nyz.com/flasher. Pre-release builds, when available, remain isolated at https://t0nyz.com/flasher-beta.
+> The public installer is at https://t0nyz.com/flasher.
 
 ## What's new in v1.5.0
 
@@ -181,12 +200,12 @@ The application hosts a responsive control center for status, manual control, se
 The current source for the next maintenance build checks three independent website channels:
 
 - Public: `https://t0nyz.com/flasher/latest.json`
-- Beta: `https://t0nyz.com/flasher-beta/latest.json`
+- Optional pre-release channel, when a test build is published
 - Rollback: `https://t0nyz.com/flasher/rollback.json`
 
 Each channel manifest can provide both a primary `bin` URL and an optional `githubBin` mirror. A single global **Firmware source** selector defaults to **Developer Site (t0nyz.com)** and can switch public, beta, and rollback downloads to GitHub; a channel's install button is disabled if its mirror is not available yet. Versioned mirror binaries are stored under `firmware/releases/` so the raw GitHub URL supports browser-based one-click installation; GitHub Release assets remain available for ordinary manual downloads.
 
-The public v1.5.0 USB installer is available at `https://t0nyz.com/flasher`. Pre-release builds remain isolated at `https://t0nyz.com/flasher-beta`. The public installer also provides both a clean USB recovery path and an application-only OTA download for the checksum-verified v1.4.2 release. Devices already running public v1.5.0 can roll back immediately by downloading that OTA file and choosing **Upload your own file**; the dedicated one-click rollback card will be included in the next firmware build.
+The public v1.5.0 USB installer is available at `https://t0nyz.com/flasher`. The public installer also provides both a clean USB recovery path and an application-only OTA download for the checksum-verified v1.4.2 release. Devices already running public v1.5.0 can roll back immediately by downloading that OTA file and choosing **Upload your own file**; the dedicated one-click rollback card will be included in the next firmware build.
 
 ### FAQ / Troubleshooting
 
