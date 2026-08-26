@@ -15,6 +15,7 @@ LOGS = {"ok": True, "debug": False, "capacity": 200, "count": 5, "returned": 5, 
 RELEASES = {
     "stable": {"version": "1.5.0", "label": "v1.5.0", "bin": "https://t0nyz.com/flasher/Bambu-Poop-Conveyor-v1.5.0-ota.bin", "githubBin": "https://raw.githubusercontent.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/Bambu-Conveyor-ESP32/firmware/releases/v1.5.0/Bambu-Poop-Conveyor-v1.5.0-ota.bin"},
     "beta": {"version": "1.5.0", "label": "v1.5.0 Beta 17", "bin": "https://t0nyz.com/flasher-beta/firmware/Bambu-Poop-Conveyor-v1.5.0-beta.17-ota.bin", "githubBin": "https://raw.githubusercontent.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/Bambu-Conveyor-ESP32/firmware/releases/v1.5.0-beta.17/Bambu-Poop-Conveyor-v1.5.0-beta.17-ota.bin"},
+    "rollback": {"version": "1.4.2", "label": "v1.4.2", "bin": "https://t0nyz.com/flasher/Bambu-Poop-Conveyor.v1.4.2-update.ino.bin", "githubBin": "https://raw.githubusercontent.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/Bambu-Conveyor-ESP32/firmware/releases/v1.4.2/Bambu-Poop-Conveyor.v1.4.2-update.ino.bin"},
 }
 if os.environ.get("PREVIEW_COOLDOWN"):
     STATUS["motor"] = {"state": "Cooldown", "running": False, "waiting": False, "cooldown": True, "remainingMs": 83400}
@@ -41,10 +42,13 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/logs": self.send_json(LOGS); return
         if path == "/api/releases/stable": self.send_json(RELEASES["stable"]); return
         if path == "/api/releases/beta": self.send_json(RELEASES["beta"]); return
+        if path == "/api/releases/rollback": self.send_json(RELEASES["rollback"]); return
         body = (ROOT / "web" / "index.html").read_text().replace(
             "https://t0nyz.com/flasher/latest.json", "/api/releases/stable"
         ).replace(
             "https://t0nyz.com/flasher-beta/latest.json", "/api/releases/beta"
+        ).replace(
+            "https://t0nyz.com/flasher/rollback.json", "/api/releases/rollback"
         ).encode()
         self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
 

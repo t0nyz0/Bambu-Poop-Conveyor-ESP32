@@ -178,14 +178,15 @@ The application hosts a responsive control center for status, manual control, se
 - **Trigger catalog:** `GET /api/trigger-catalog`
 - **Logs:** `/api/logs`
 
-The **Update** tab checks two independent website channels:
+The current source for the next maintenance build checks three independent website channels:
 
 - Public: `https://t0nyz.com/flasher/latest.json`
 - Beta: `https://t0nyz.com/flasher-beta/latest.json`
+- Rollback: `https://t0nyz.com/flasher/rollback.json`
 
-Each channel manifest can provide both a primary `bin` URL and an optional `githubBin` mirror. A single global **Firmware source** selector defaults to **Developer Site (t0nyz.com)** and can switch all published downloads to GitHub; a channel's install button is disabled if its mirror is not available yet. Versioned mirror binaries are stored under `firmware/releases/` so the raw GitHub URL supports browser-based one-click installation; GitHub Release assets remain available for ordinary manual downloads.
+Each channel manifest can provide both a primary `bin` URL and an optional `githubBin` mirror. A single global **Firmware source** selector defaults to **Developer Site (t0nyz.com)** and can switch public, beta, and rollback downloads to GitHub; a channel's install button is disabled if its mirror is not available yet. Versioned mirror binaries are stored under `firmware/releases/` so the raw GitHub URL supports browser-based one-click installation; GitHub Release assets remain available for ordinary manual downloads.
 
-The public v1.5.0 USB installer is available at `https://t0nyz.com/flasher`. Pre-release builds remain isolated at `https://t0nyz.com/flasher-beta`, and the previous v1.4.2 files remain available as known-good recovery artifacts.
+The public v1.5.0 USB installer is available at `https://t0nyz.com/flasher`. Pre-release builds remain isolated at `https://t0nyz.com/flasher-beta`. The public installer also provides both a clean USB recovery path and an application-only OTA download for the checksum-verified v1.4.2 release. Devices already running public v1.5.0 can roll back immediately by downloading that OTA file and choosing **Upload your own file**; the dedicated one-click rollback card will be included in the next firmware build.
 
 ### FAQ / Troubleshooting
 

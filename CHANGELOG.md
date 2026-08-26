@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.5.0] - Unreleased
+## [Unreleased]
+
+### Added
+- A dedicated v1.4.2 rollback channel on the Update screen, with the same Developer Site/GitHub source selector used by public and beta releases.
+- A checksum-verified v1.4.2 USB recovery option and OTA rollback download on the public installer.
+
+## [1.5.0] - 2026-08-25
 
 ### Added
 - Responsive Overview, Triggers, Settings, Logs, and Update screens.

@@ -1,0 +1,9 @@
+{
+  "version": "1.4.2",
+  "channel": "rollback",
+  "label": "v1.4.2",
+  "bin": "https://t0nyz.com/flasher/Bambu-Poop-Conveyor.v1.4.2-update.ino.bin",
+  "manifest": "https://t0nyz.com/flasher/manifest-v1.4.2.json",
+  "githubBin": "https://raw.githubusercontent.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/Bambu-Conveyor-ESP32/firmware/releases/v1.4.2/Bambu-Poop-Conveyor.v1.4.2-update.ino.bin",
+  "sha256": "ff3d70b10bdaee6cf3589ee3a639e462a01827d833a5164ab188e8ffb2c2f180"
+}

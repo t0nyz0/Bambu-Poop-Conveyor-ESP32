@@ -1,0 +1,16 @@
+{
+  "name": "Bambu Poop Conveyor v1.4.2 rollback",
+  "version": "1.4.2",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        {
+          "path": "../firmware/releases/v1.4.2/Bambu-Poop-Conveyor.v1.4.2-final.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}
