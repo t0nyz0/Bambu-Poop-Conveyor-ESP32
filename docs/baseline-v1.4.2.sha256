@@ -1,0 +1,5 @@
+# Verified local recovery baseline before the v1.5.0 work.
+87b1e3093ed7fa32fecd7ba4eb646a6fc92d27f246b338f3ae0240cd53f491cc  firmware.bin
+f6e34bca19e4929acc1d5561b03cbd8941613c3247a4d4b41ba05b8972fc1f1c  bootloader.bin
+148b959cbff1c38aa8e1d5c0ba9d612c54997b945e56a63f41223eef650653a1  partitions.bin
+7fea8c2d3f1207ec64f747b45ddd75ea76d3647109d84afb7f22279bae4d6367  Bambu-Poop-Conveyor.ino

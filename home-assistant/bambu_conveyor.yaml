@@ -1,0 +1,36 @@
+# First-party Home Assistant package for Bambu Poop Conveyor firmware v1.5.0+.
+# Replace the IP address below with the ESP32's DHCP reservation.
+rest_command:
+  bambu_conveyor_run:
+    url: "http://192.168.1.116/api/motor/run"
+    method: POST
+  bambu_conveyor_stop:
+    url: "http://192.168.1.116/api/motor/stop"
+    method: POST
+  bambu_conveyor_clear_cooldown:
+    url: "http://192.168.1.116/api/motor/clear-cooldown"
+    method: POST
+
+sensor:
+  - platform: rest
+    name: Bambu Conveyor State
+    unique_id: bambu_conveyor_state
+    resource: "http://192.168.1.116/api/status"
+    value_template: "{{ value_json.motor.state }}"
+    scan_interval: 5
+    json_attributes_path: "$.printer"
+    json_attributes:
+      - stage
+      - stageDescription
+      - subStage
+      - subStageDescription
+      - gcodeState
+
+binary_sensor:
+  - platform: rest
+    name: Bambu Conveyor Running
+    unique_id: bambu_conveyor_running
+    resource: "http://192.168.1.116/api/status"
+    value_template: "{{ value_json.motor.running }}"
+    device_class: running
+    scan_interval: 5

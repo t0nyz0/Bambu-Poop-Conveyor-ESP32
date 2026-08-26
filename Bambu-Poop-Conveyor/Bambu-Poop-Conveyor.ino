@@ -1,8 +1,9 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-// Last updated: 12/13/25
-char version[10] = "1.4.2";
+// Last updated: 8/25/26
+char version[10] = "1.5.0";
+const char displayVersion[] = "1.5.0";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -12,7 +13,10 @@ char version[10] = "1.4.2";
 #include <ArduinoJson.h>
 #include <Update.h>
 #include <DNSServer.h>
-#include <time.h> 
+#include <ESPmDNS.h>
+#include <ImprovWiFiLibrary.h>
+#include <time.h>
+#include "generated_ui.h"
 
 //---- SETTINGS YOU SHOULD ENTER --------------------------------------------------------------------------------------------------------------------------
 
@@ -116,12 +120,17 @@ int printer_stage = -100;
 int printer_sub_stage = -100;
 String printer_real_stage = "";
 String gcodeState = "";
+String printerPrintType = "";
 
 // Create instances
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 Preferences preferences;
 WebServer server(80);
+ImprovWiFi improvSerial(&Serial);
+
+const char* DEVICE_HOSTNAME = "BambuConveyor-ESP32";
+const char* DEVICE_MDNS = "bambuconveyor-esp32";
 
 // Function to get the printer stage description
 const char* getStageInfo(int stage) {
@@ -195,6 +204,18 @@ const char* getStageInfo(int stage) {
         case 64: return "Preparing Hotend";
         case 65: return "Calibrating nozzle clumping detection position";
         case 66: return "Purifying the chamber air";
+        case 67: return "Measuring rotary attachment";
+        case 68: return "Moving toolhead above purge chute";
+        case 69: return "Cooling nozzle";
+        case 70: return "Moving toolhead to center of heatbed";
+        case 71: return "Active arc fitting";
+        case 72: return "Detecting hotend type";
+        case 73: return "Detecting build plate alignment";
+        case 74: return "Detecting objects on heatbed surface";
+        case 75: return "Detecting objects under heatbed";
+        case 76: return "Pre-extrusion before printing";
+        case 77: return "Preparing AMS";
+        case 255: return "Idle";
         default: return "Unknown stage";
     }
 }
@@ -229,6 +250,9 @@ void syncTime() {
     }
 }
 
+#include "v150_features.h"
+
+#if 0  // v1.4 updater retained only as migration reference; v1.5 uses the safe asynchronous handler.
 void handleFirmwareUpload() {
     HTTPUpload& upload = server.upload();
     
@@ -267,6 +291,7 @@ void handleFirmwareUpload() {
         Serial.println("Update was aborted");
     }
 }
+#endif
 
 // Function to handle the control page
 void handleControl() {
@@ -291,6 +316,9 @@ void handleControl() {
         server.send(200, "text/html", html);
     } else if (server.method() == HTTP_POST) {
         server.send(200, "text/plain", "Motor activated manually");
+        activeMotorWaitTime = motorWaitTime;
+        activeMotorRunTime = motorRunTime;
+        activeDelayAfterRun = delayAfterRun;
         motorWaiting = true;
         motorWaitStartTime = millis();
         addLogEntry("Motor activated manually");
@@ -301,6 +329,9 @@ void handleControl() {
 // Function to handle the root URL
 void handleManualRun() {
     server.send(200, "text/plain", "Motor activated");
+    activeMotorWaitTime = motorWaitTime;
+    activeMotorRunTime = motorRunTime;
+    activeDelayAfterRun = delayAfterRun;
     motorWaiting = true;
     motorWaitStartTime = millis();
     additionalWaitTime = 0;  // Reset additional wait time for manual trigger
@@ -309,6 +340,7 @@ void handleManualRun() {
     addLogEntry("Motor activated from RUN url");
 }
 
+#if 0  // v1.4 form handler exposed saved secrets and rebooted synchronously; replaced by /api/config.
 void handleConfig() {
     if (server.method() == HTTP_GET) {
                 String html = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Bambu Poop Conveyor</title>";
@@ -526,9 +558,11 @@ void handleConfig() {
         ESP.restart();
     }
 }
+#endif
 
 // Function to handle the root URL
 
+#if 0  // Legacy pages are replaced by the single compressed v1.5 control center.
 String formatDateTime(time_t timestamp) {
     struct tm timeinfo;
     time_t adjustedTime = timestamp; // Apply timezone
@@ -670,6 +704,13 @@ void handleLogs() {
     html += "</table></div></body></html>";
     server.send(200, "text/html", html);
 }
+#endif
+
+// Legacy Home Assistant status response retained for existing installations.
+void handleMotorStatus() {
+    String jsonResponse = "{ \"motor_running\": " + String(motorRunning ? "true" : "false") + " }";
+    server.send(200, "application/json", jsonResponse);
+}
 
 // MQTT callback function
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -686,6 +727,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         return;
     }
 
+    if (doc.containsKey("print") && doc["print"].containsKey("stage") && doc["print"]["stage"].containsKey("_id")) {
+        printer_stage = doc["print"]["stage"]["_id"].as<int>();
+    }
+
+    // Older printer firmware reports the same value as stg_cur; prefer it when both exist.
     if (doc.containsKey("print") && doc["print"].containsKey("stg_cur")) {
         printer_stage = doc["print"]["stg_cur"].as<int>();
     }
@@ -694,27 +740,15 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         printer_sub_stage = doc["print"]["mc_print_sub_stage"].as<int>();
     }
 
-
-    if (!useMotionSensor && !motorWaiting && !motorRunning && !delayAfterRunning && 
-        (printer_stage == 14 || (!onlyRunAtStart && printer_stage == 4) || (!onlyRunAtStart && printer_sub_stage == 4 && printer_stage != -1))) {
-        motorWaiting = true;
-        motorWaitStartTime = millis();
-        addLogEntry("Status 4 or 14 detected! Running conveyor!!!");
-
-        if (debug) {
-            Serial.println("Status 4 or 14 detected! Running conveyor!!!");
-        }
-
-        if (printer_sub_stage == 4 && printer_stage != -1) {
-            additionalWaitTime = 75000;
-        } else {
-            additionalWaitTime = 0;
-        }
-
-        yellowLightStartTime = millis();
-        yellowLightState = HIGH;
-        digitalWrite(yellowLight, yellowLightState);
+    if (doc.containsKey("print") && doc["print"].containsKey("gcode_state")) {
+        gcodeState = doc["print"]["gcode_state"].as<String>();
     }
+
+    if (doc.containsKey("print") && doc["print"].containsKey("print_type")) {
+        printerPrintType = doc["print"]["print_type"].as<String>();
+    }
+
+    if (!useMotionSensor) evaluateTriggerRules();
 
     if (debug && !useMotionSensor) {
         Serial.println("Bambu Poop Conveyor v" + String(version) + 
@@ -835,6 +869,9 @@ void setup() {
 
     // Start Serial communication
     Serial.begin(115200);
+    bootId = esp_random();
+    improvSerial.setDeviceInfo(ImprovTypes::ChipFamily::CF_ESP32, "Bambu-Poop-Conveyor", version, DEVICE_HOSTNAME, "http://{LOCAL_IPV4}/");
+    improvSerial.onImprovConnected(handleImprovConnected);
     client.setBufferSize(40000);
 
     // Configure LED PWM functionalities
@@ -873,6 +910,14 @@ void setup() {
     // Close Preferences after reading all values
     preferences.end();
 
+    loadTriggerRules();
+    activeMotorWaitTime = motorWaitTime;
+    activeMotorRunTime = motorRunTime;
+    activeDelayAfterRun = delayAfterRun;
+
+    // Set the DHCP hostname before selecting a WiFi mode or connecting.
+    WiFi.setHostname(DEVICE_HOSTNAME);
+
     // Decide if we should connect to WiFi or enter AP mode
     if (strlen(ssid) > 0 && strlen(password) > 0) {
         connectToWiFi();
@@ -891,25 +936,20 @@ void setup() {
         connectToMqtt(); 
     }
 
-    // Set up Web Server routes
-    server.on("/", handleConfig);
-    server.on("/control", handleControl);
-    server.on("/config", handleConfig);
-    server.on("/logs", handleLogs);
-    // Register Home Assistant API endpoints
+    // Keep the original Home Assistant endpoints while adding the v1.5 API.
     server.on("/run", handleManualRun);
     server.on("/status", handleMotorStatus);
-    server.on("/update", HTTP_GET, handleUpdatePage);
-    server.on("/update", HTTP_POST, []() {
-        // Response will be sent by handleFirmwareUpload after upload completes
-    }, handleFirmwareUpload);
-
-
+    registerV150Routes();
 
     // Start Web Server
     server.begin();
     Serial.println("Web server started.");
     addLogEntry("Web server started.");
+
+    if (!isAPMode && MDNS.begin(DEVICE_MDNS)) {
+        MDNS.addService("http", "tcp", 80);
+        addLogEntry("mDNS available at " + String(DEVICE_MDNS) + ".local");
+    }
 
     if (!client.connected()) {
         sendPushAllCommand();
@@ -928,6 +968,7 @@ void startWiFiAPMode() {
     isAPMode = true;  
 
     WiFi.mode(WIFI_AP);
+    WiFi.softAPsetHostname(DEVICE_HOSTNAME);
     WiFi.softAP("BambuConveyor", "12345678");  // Open WiFi AP with password
 
     dnsServer.start(53, "*", WiFi.softAPIP()); // Captive portal redirection
@@ -962,12 +1003,7 @@ void connectToWiFi() {
         delay(500);
 
         retryCount++;
-        if (retryCount >= maxRetries) {
-            Serial.println("\nExceeded max WiFi connection attempts, rebooting ESP32...");
-            addLogEntry("Exceeded max WiFi connection attempts, rebooting ESP32...");
-            delay(2000); // Small delay before reboot
-            ESP.restart();
-        }
+        if (retryCount >= maxRetries) break;
     }
 
     if (WiFi.status() == WL_CONNECTED) {
@@ -989,18 +1025,25 @@ void connectToWiFi() {
 unsigned long lastMQTTDisconnectTime = 0;
 bool mqttReconnecting = false;
 void loop() {
+    improvSerial.handleSerial();
     server.handleClient();
     dnsServer.processNextRequest();  // Handle captive portal redirects
+    serviceScheduledRestart();
 
     if (isAPMode) return;  // Skip all WiFi/MQTT logic if in AP mode
 
     unsigned long currentMillis = millis();
     static unsigned long disconnectedTime = 0; 
 
+    if (!useMotionSensor) evaluateTriggerRules();
+
     // Determine push interval based on printer model
     unsigned long pushInterval = (strcmp(printer_model, "X1") == 0 || strcmp(printer_model, "H2") == 0) ? 30000 : 300000; // 5 min for others
 
     if (useMotionSensor && digitalRead(motionSensorPin) == HIGH && !motorWaiting && !motorRunning && !delayAfterRunning) {
+        activeMotorWaitTime = motorWaitTime;
+        activeMotorRunTime = motorRunTime;
+        activeDelayAfterRun = delayAfterRun;
         motorWaitStartTime = millis();
         yellowLightStartTime = millis();
         yellowLightState = HIGH;
@@ -1020,7 +1063,7 @@ void loop() {
     }
 
     // Motor waiting logic
-    if (motorWaiting && millis() - motorWaitStartTime >= (motorWaitTime + additionalWaitTime)) {
+    if (motorWaiting && millis() - motorWaitStartTime >= (activeMotorWaitTime + additionalWaitTime)) {
         motorWaiting = false;
         motorRunning = true;
         motorRunStartTime = millis();
@@ -1041,7 +1084,7 @@ void loop() {
     }
 
     // Motor running logic
-    if (motorRunning && millis() - motorRunStartTime >= motorRunTime) {
+    if (motorRunning && millis() - motorRunStartTime >= activeMotorRunTime) {
         motorRunning = false;
         delayAfterRunning = true;
         delayAfterRunStartTime = millis();
@@ -1055,7 +1098,7 @@ void loop() {
     }
 
     // Delay after run logic
-    if (delayAfterRunning && millis() - delayAfterRunStartTime >= delayAfterRun) {
+    if (delayAfterRunning && millis() - delayAfterRunStartTime >= activeDelayAfterRun) {
         delayAfterRunning = false;
         if (debug) Serial.println("Delay after run complete");
         addLogEntry("Delay after run complete");

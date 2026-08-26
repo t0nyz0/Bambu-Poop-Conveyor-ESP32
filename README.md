@@ -1,8 +1,33 @@
-# Bambu Poop Conveyor for ESP32 
-:arrow_right:	:arrow_right:	:poop: :arrow_right: :arrow_right: :poop: :arrow_right: :arrow_right:
+# Bambu Poop Conveyor for ESP32
+
+<p align="center">
+  <img src="assets/bambu-conveyor-logo.svg" width="112" alt="Bambu Poop Conveyor logo">
+</p>
+
+:arrow_right: :arrow_right: :poop: :arrow_right: :arrow_right: :poop: :arrow_right: :arrow_right:
 
 > [!TIP] 
-> Be sure to check out the new web installer. https://t0nyz.com/flasher/index.html
+> The public installer is at https://t0nyz.com/flasher. Pre-release builds, when available, remain isolated at https://t0nyz.com/flasher-beta.
+
+## What's new in v1.5.0
+
+Version 1.5.0 introduces a complete, responsive control center while deliberately preserving the proven motor and LED sequence from v1.4.2.
+
+- Live Wi-Fi, printer, MQTT, conveyor, and physical LED status
+- Manual run and emergency stop controls
+- Live wait/run/cooldown countdowns with a dedicated, safe cooldown override
+- Add/remove rules from the full known printer-stage catalog, print lifecycle states, or advanced numeric substages
+- Independent wait, run, cooldown, and once-per-event/once-per-print behavior for every rule
+- Safer in-device firmware updates with real upload progress, delayed reboot, reconnect, and version verification
+- Side-by-side public and beta update discovery, with t0nyz.com as the default download source and an optional GitHub mirror when available
+- A continuous USB web-installer flow: flash, configure Wi-Fi, then open the ESP32 without losing the installer page
+- Safer settings APIs that never send stored Wi-Fi passwords or printer access codes back to the browser
+- Friendly network identity: `BambuConveyor-ESP32` and `bambuconveyor-esp32.local`
+- Expanded first-party Home Assistant REST controls
+
+### Web control center
+
+![Bambu Poop Conveyor v1.5.0 control center](docs/images/webui-desktop.png)
 
 ### For more detailed project information visit: https://t0nyz.com/projects/bambuconveyor
 
@@ -42,7 +67,7 @@ The **Bambu Poop Conveyor** supports two methods for triggering the conveyor, de
 
 #### 1. MQTT Mode (Recommended for X1C) (Default setting)
 - Best suited for **X1C printers** due to their more powerful CPU, which handles MQTT updates more efficiently.
-- Listens for printer status changes (Change Filament status and Clean nozzle status) and automatically activates the conveyor when needed.
+- Listens for printer status changes and automatically activates the conveyor using your saved event rules. The defaults retain nozzle cleaning and filament-change behavior, and v1.5.0 can add any known printer stage or print lifecycle state.
 - Requires a stable network connection and correct MQTT setup.
 
 #### 2. IR Motion Detection Mode (Better for P1 & A1 Series)
@@ -62,7 +87,11 @@ To install the firmware, use one of the following methods:
 ### **Method 1: Web Installer (Easiest Method)**
 - Open **Google Chrome** or **Microsoft Edge**.
 - Go to **[Bambu ESP32 Installer](https://t0nyz.com/flasher)**.
-- Click the **"Install"** button and follow the on-screen instructions.
+- Click **Connect ESP32 & install** and follow the on-screen instructions.
+- Keep the installer tab open. It remains loaded while the ESP32 flashes, restarts, joins Wi-Fi, and reports its control-center address.
+
+> [!NOTE]
+> The public installer must use HTTPS because browsers require a secure page for USB/Web Serial access. The ESP32 control center itself uses local HTTP; the two pages have different jobs.
 ---
 
 ### **Method 2: Manual Installation**
@@ -75,7 +104,7 @@ To install the firmware, use one of the following methods:
    - Alternatively, download the precompiled ESPTool from the official Espressif GitHub.
 
 #### **2. Download the Firmware File**  
-   - Download the latest firmware from the **[GitHub Releases](https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/releases/latest)**.  
+   - Download `Bambu-Poop-Conveyor-v1.5.0-merged.bin` from the **[GitHub Releases](https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/releases/latest)** page.
 
 #### **3. Connect Your ESP32**  
    - Plug your ESP32 into your computer using a USB cable.  
@@ -92,8 +121,8 @@ To install the firmware, use one of the following methods:
 #### **5. Flash the Firmware**  
    - Replace `<PORT>` with your ESP32’s serial port (e.g., `/dev/tty.usbserial-1`):  
      ```sh
-     esptool.py --chip esp32 --port /dev/tty.usbserial-1 --baud 460800 write_flash \
-       0x0 Bambu-Poop-Conveyor.v1.3.3-final.bin
+     esptool --chip esp32 --port /dev/tty.usbserial-1 --baud 460800 write-flash \
+       0x0 Bambu-Poop-Conveyor-v1.5.0-merged.bin
      ```  
 
 #### **6. Verify Flashing and Restart**  
@@ -103,12 +132,16 @@ Your ESP32 should now be running the updated firmware.
 
 ## Configuring via Web Interface
 
-Once flashed, the ESP32 starts in AP Mode:
+With the USB web installer, Wi-Fi can be configured in the same installation dialog. The installer then provides a link to the new device.
 
-1. Connect to the **"BambuConveyor"** WiFi network.
-2. Open a browser and go to **[192.168.4.1/config](http://192.168.4.1/config)**.
+If serial Wi-Fi setup is skipped, the ESP32 starts in AP Mode:
+
+1. Connect to the **"BambuConveyor"** WiFi network using password **`12345678`**.
+2. Open a browser and go to **[192.168.4.1](http://192.168.4.1)**.
 3. Enter your WiFi and MQTT credentials.
 4. Click **Save**. The ESP32 will reboot and connect to your WiFi.
+
+On most networks it can then be reached at **[http://bambuconveyor-esp32.local](http://bambuconveyor-esp32.local)**. Routers that honor DHCP hostnames should list it as **BambuConveyor-ESP32** instead of a generic `esp32-xxxxxx` name. A router may retain its old cached label until the lease or device entry refreshes.
 
 For troubleshooting, open an issue on GitHub or check the discussions tab.
 
@@ -132,13 +165,27 @@ const int motionSensorPin = 22;
 
 ### Web Server
 
-The application hosts a web server to provide manual control and configuration. Access the following URLs for different functionalities:
+The application hosts a responsive control center for status, manual control, settings, event rules, and firmware updates:
 
-- **Root URL:** Opens Configuration page (`/`)
-- **Control URL:** Manual motor control page (`/control`)
-- **Config URL:** Configuration page to update settings (`/config`) 
-- **Logs URL:** Log history page (`/logs`)
-- **Manual Run URL:** Opening this URL runs the motor manually (`/run`)
+- **Control center:** `/`
+- **Health check:** `/api/health`
+- **Detailed status:** `/api/status`
+- **Manual run:** `POST /api/motor/run` (legacy `/run` remains supported)
+- **Emergency stop:** `POST /api/motor/stop`
+- **Clear cooldown:** `POST /api/motor/clear-cooldown`
+- **Settings:** `GET` or `POST /api/config`
+- **Trigger rules:** `GET` or `POST /api/triggers`
+- **Trigger catalog:** `GET /api/trigger-catalog`
+- **Logs:** `/api/logs`
+
+The **Update** tab checks two independent website channels:
+
+- Public: `https://t0nyz.com/flasher/latest.json`
+- Beta: `https://t0nyz.com/flasher-beta/latest.json`
+
+Each channel manifest can provide both a primary `bin` URL and an optional `githubBin` mirror. A single global **Firmware source** selector defaults to **Developer Site (t0nyz.com)** and can switch all published downloads to GitHub; a channel's install button is disabled if its mirror is not available yet. Versioned mirror binaries are stored under `firmware/releases/` so the raw GitHub URL supports browser-based one-click installation; GitHub Release assets remain available for ordinary manual downloads.
+
+The public v1.5.0 USB installer is available at `https://t0nyz.com/flasher`. Pre-release builds remain isolated at `https://t0nyz.com/flasher-beta`, and the previous v1.4.2 files remain available as known-good recovery artifacts.
 
 ### FAQ / Troubleshooting
 
@@ -156,23 +203,38 @@ The application hosts a web server to provide manual control and configuration. 
 - Make sure the ESP32 has good Wifi signal
 - Reach out to me if you still have issues
 
-### Home Assistant Settings
+### Home Assistant
 
-- Action: Run motor manually
-- Sensor: States if motor is running 
+v1.5.0 keeps Home Assistant support in this firmware—no alternate firmware is required. Replace `192.168.1.116` below with the ESP32's reserved IP address.
 
-Example yaml
-```
+```yaml
 rest_command:
   bambu_run_motor:
-    url: "http://11.0.1.54/run"
+    url: "http://192.168.1.116/api/motor/run"
+    method: POST
+  bambu_stop_motor:
+    url: "http://192.168.1.116/api/motor/stop"
     method: POST
 
 sensor:
   - platform: rest
-    name: "Bambu Motor Status"
-    resource: "http://11.0.1.54/status"
-    value_template: "{{ value_json.motor_running }}"
+    name: "Bambu Conveyor State"
+    resource: "http://192.168.1.116/api/status"
+    value_template: "{{ value_json.motor.state }}"
+    scan_interval: 5
+    json_attributes_path: "$.printer"
+    json_attributes:
+      - stage
+      - stageDescription
+      - gcodeState
+
+binary_sensor:
+  - platform: rest
+    name: "Bambu Conveyor Running"
+    resource: "http://192.168.1.116/api/status"
+    value_template: "{{ value_json.motor.running }}"
+    device_class: running
+    scan_interval: 5
 ```
 
 ## License

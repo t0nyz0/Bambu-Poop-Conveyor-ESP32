@@ -1,0 +1,2 @@
+1f28b58316ec86d5555e8af88ddaf0f28c801f95b138af7c35a46abcd1668f16  Bambu-Poop-Conveyor-v1.5.0-merged.bin
+71a10adc6b8cf1444234ee40f5210fb9c88e2a5a5291b36f199a47428fb7d40b  Bambu-Poop-Conveyor-v1.5.0-ota.bin

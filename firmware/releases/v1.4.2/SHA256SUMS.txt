@@ -1,0 +1,2 @@
+a26baf4bc938ce49ccb176b76b80413976903d495a995ca0a26fe8a2f110f735  Bambu-Poop-Conveyor.v1.4.2-final.bin
+ff3d70b10bdaee6cf3589ee3a639e462a01827d833a5164ab188e8ffb2c2f180  Bambu-Poop-Conveyor.v1.4.2-update.ino.bin

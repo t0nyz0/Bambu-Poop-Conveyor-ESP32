@@ -1,0 +1,11 @@
+.pio/
+.DS_Store
+__pycache__/
+*.pyc
+dist/
+firmware/releases/v1.5.0-beta.11/
+firmware/releases/v1.5.0-beta.12/
+firmware/releases/v1.5.0-beta.13/
+firmware/releases/v1.5.0-beta.14/
+firmware/releases/v1.5.0-beta.15/
+firmware/releases/v1.5.0-beta.16/
