@@ -5,7 +5,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "web" / "index.html").read_bytes()
-payload = compress(source, compresslevel=9, mtime=0)
+payload = bytearray(compress(source, compresslevel=9, mtime=0))
+# gzip byte 9 identifies the host operating system. Normalize it to "unknown"
+# so macOS, Linux, and Windows generate the exact same embedded header.
+payload[9] = 255
 rows = []
 for offset in range(0, len(payload), 16):
     rows.append("  " + ", ".join(f"0x{byte:02x}" for byte in payload[offset:offset + 16]) + ",")
