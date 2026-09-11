@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Build reproducible OTA and merged web-installer firmware artifacts."""
+import argparse
 import hashlib
+import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -8,17 +11,29 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / ".pio" / "build" / "esp32dev"
 INSTALLER_FW = ROOT / "installer" / "firmware"
-DIST = ROOT / "dist" / "v1.5.0"
-PIO_HOME = Path.home() / ".platformio"
+SOURCE = ROOT / "Bambu-Poop-Conveyor" / "Bambu-Poop-Conveyor.ino"
+PIO_HOME = Path(os.environ.get("PLATFORMIO_CORE_DIR", Path.home() / ".platformio"))
+PACKAGES = Path(os.environ.get("PLATFORMIO_PACKAGES_DIR", PIO_HOME / "packages"))
 PIO_PYTHON = PIO_HOME / "penv" / "bin" / "python"
-ESPTOOL = PIO_HOME / "packages" / "tool-esptoolpy" / "esptool.py"
-BOOT_APP = PIO_HOME / "packages" / "framework-arduinoespressif32" / "tools" / "partitions" / "boot_app0.bin"
+ESPTOOL = PACKAGES / "tool-esptoolpy" / "esptool.py"
+BOOT_APP = PACKAGES / "framework-arduinoespressif32" / "tools" / "partitions" / "boot_app0.bin"
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--version", help="Expected firmware version (defaults to the source value)")
+args = parser.parse_args()
+match = re.search(r'char version\[\d+\]\s*=\s*"([^"]+)"', SOURCE.read_text())
+if not match:
+    raise SystemExit("Could not read the firmware version from the source")
+version = match.group(1)
+if args.version and args.version != version:
+    raise SystemExit(f"Source version is {version}, not {args.version}")
+DIST = ROOT / "dist" / f"v{version}"
 
 subprocess.run(["pio", "run"], cwd=ROOT, check=True)
 INSTALLER_FW.mkdir(parents=True, exist_ok=True)
 DIST.mkdir(parents=True, exist_ok=True)
-ota = DIST / "Bambu-Poop-Conveyor-v1.5.0-ota.bin"
-merged = DIST / "Bambu-Poop-Conveyor-v1.5.0-merged.bin"
+ota = DIST / f"Bambu-Poop-Conveyor-v{version}-ota.bin"
+merged = DIST / f"Bambu-Poop-Conveyor-v{version}-merged.bin"
 shutil.copy2(BUILD / "firmware.bin", ota)
 subprocess.run([
     str(PIO_PYTHON), str(ESPTOOL), "--chip", "esp32", "merge_bin", "-o", str(merged),

@@ -1,9 +1,9 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-// Last updated: 8/25/26
-char version[10] = "1.5.0";
-const char displayVersion[] = "1.5.0";
+// Last updated: 9/11/26
+char version[10] = "1.5.1";
+const char displayVersion[] = "1.5.1";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -808,13 +808,17 @@ void connectToMqtt() {
             sprintf(mqtt_topic, "device/%s/report", serial_number);
             client.subscribe(mqtt_topic);
             publishPushAllMessage();
-            digitalWrite(redLight, LOW);
-            digitalWrite(yellowLight, LOW);  
-            if (debug) {
-                Serial.print("Red light off");
-                addLogEntry("Red light off");
-                Serial.print("Yellow light off");
-                addLogEntry("Yellow light off");
+            // A reconnect must not overwrite an active motor's LED sequence.
+            if (!motorWaiting && !motorRunning) {
+                digitalWrite(redLight, LOW);
+                digitalWrite(yellowLight, LOW);
+                yellowLightState = LOW;
+                if (debug) {
+                    Serial.print("Red light off");
+                    addLogEntry("Red light off");
+                    Serial.print("Yellow light off");
+                    addLogEntry("Yellow light off");
+                }
             }
         } else {  
             if (debug) {
@@ -824,8 +828,10 @@ void connectToMqtt() {
                 addLogEntry("Failed to connect to MQTT (Bambu Printer), trying again in 5 seconds");
             }
             lastAttemptTime = millis();
-            digitalWrite(redLight, HIGH);
-            addLogEntry("RED light turned on");
+            if (!motorWaiting && !motorRunning) {
+                digitalWrite(redLight, HIGH);
+                addLogEntry("RED light turned on");
+            }
         }
     }
 }
@@ -1114,13 +1120,15 @@ void loop() {
         }
     } 
     
-   if (!useMotionSensor && !client.connected()) {
-    
+    if (!useMotionSensor && !client.connected()) {
+        // Wi-Fi alone is not ready: green stays off until MQTT reconnects.
+        digitalWrite(greenLight, LOW);
+
         if (disconnectedTime == 0) {
             disconnectedTime = millis();  // Mark the time of disconnection
         }
 
-        if (millis() - disconnectedTime >= 5000) {  // Flash only if disconnected for 5+ seconds
+        if (!motorWaiting && !motorRunning && millis() - disconnectedTime >= 5000) {  // Motor LEDs take priority
             if (currentMillis - yellowLightStartTime >= 500) {
                 yellowLightStartTime = currentMillis;
                 yellowLightState = !yellowLightState;
@@ -1135,7 +1143,20 @@ void loop() {
             connectToMqtt();
             lastAttemptTime = millis(); 
         }
-    } 
+    }
+
+    // Clear the disconnect history once per recovery, not on every loop.
+    if (!useMotionSensor && client.connected() && disconnectedTime != 0) {
+        disconnectedTime = 0;
+        if (!motorWaiting && !motorRunning) {
+            // Use fresh time because the reconnect call can block.
+            yellowLightStartTime = millis();
+            yellowLightState = LOW;
+            digitalWrite(yellowLight, LOW);
+            digitalWrite(redLight, LOW);
+            digitalWrite(greenLight, HIGH);
+        }
+    }
 
     client.loop();
 }

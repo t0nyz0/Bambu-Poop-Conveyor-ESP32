@@ -1,6 +1,6 @@
 {
   "name": "Bambu Poop Conveyor",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "new_install_prompt_erase": true,
   "new_install_improv_wait_time": 30,
   "builds": [
@@ -9,7 +9,7 @@
       "improv": true,
       "parts": [
         {
-          "path": "firmware/Bambu-Poop-Conveyor-v1.5.0-merged.bin",
+          "path": "firmware/Bambu-Poop-Conveyor-v1.5.1-merged.bin",
           "offset": 0
         }
       ]
