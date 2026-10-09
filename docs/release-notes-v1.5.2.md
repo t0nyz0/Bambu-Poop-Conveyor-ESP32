@@ -6,12 +6,8 @@ Promotes the tested v1.5.2 Beta 2 changes to the public channel:
   Configured printers and motion-only setups keep their normal Overview landing.
 - Stop offering an older beta after it has been superseded by a public release.
   The beta card shows **No newer beta available** without an install button.
-- Explicitly label existing Developer Site Update-screen requests and include the
-  installed version. This is anonymous, self-reported context—not authenticated
-  device identity, an install-success assertion, or a unique-device count.
-- Preserve unchanged GitHub mirror URLs and browser privacy preferences. No extra
-  telemetry request, heartbeat, device identifier, credential, local address, or
-  printer detail is sent. Analytics collection failures cannot block downloads.
+- Keep Developer Site and GitHub mirror downloads compatible with the existing
+  settings-preserving update workflow.
 
 Motor timing, MQTT behavior, indicators, saved settings, serial Wi-Fi provisioning,
 and upload/reboot behavior are unchanged from the established v1.5.1 behavior.
@@ -30,6 +26,18 @@ and upload/reboot behavior are unchanged from the established v1.5.1 behavior.
 
 ## Verification
 
-See `docs/release-qa-v1.5.2.md` for automated tests, actual ESP32 OTA acceptance,
-analytics/database/dashboard proof, installer paths, mirror checks, and explicit
-limits on fresh USB, physical hotspot, printer, and long-running soak coverage.
+See the [release QA record](https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/blob/Bambu-Conveyor-ESP32/docs/release-qa-v1.5.2.md)
+for automated tests, actual ESP32 OTA acceptance, installer paths, mirror checks,
+and explicit limits on fresh USB, physical hotspot, printer, and soak coverage.
+
+<details>
+<summary>Update-request privacy</summary>
+
+Existing Developer Site Update-screen requests include their source and installed
+version for aggregate usage statistics. These are self-reported values, not
+authenticated identity, installation success, or unique-device counts. No extra
+request, heartbeat, device identifier, credentials, local address, or printer
+details are added. Browser privacy preferences are respected; GitHub URLs are
+unchanged, and reporting failures cannot block downloads.
+
+</details>

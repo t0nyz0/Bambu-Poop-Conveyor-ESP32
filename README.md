@@ -37,7 +37,6 @@ Version 1.5.2 builds on the responsive v1.5 control center and MQTT status-light
 
 - Opens Settings automatically when Wi-Fi or MQTT printer setup is incomplete; configured and motion-only devices still open Overview
 - Hides superseded beta releases after a public release is available
-- Labels Developer Site Update-screen requests with the installed firmware version for anonymous, self-reported analytics—not verified device identity or fleet counts
 
 - Live Wi-Fi, printer, MQTT, conveyor, and physical LED status
 - Manual run and emergency stop controls
@@ -217,7 +216,9 @@ The public v1.5.2 USB installer is available at `https://t0nyz.com/flasher`. The
 
 When the public release supersedes a beta, the Update screen shows **No newer beta available** and hides its install button. Old beta files remain archived; they are not silently replaced with stable files.
 
-Update-screen checks and Developer Site firmware downloads report only their source and installed version. No device identifier, background heartbeat, Wi-Fi credentials, local address, or printer details are added. Browser Do Not Track/Global Privacy Control suppresses these labels without blocking updates. GitHub mirror URLs remain unchanged. Reports are anonymous claims, not proof of an installed or running conveyor.
+### Update-request privacy
+
+Update-screen checks and Developer Site firmware downloads report their source and installed version for aggregate usage statistics. No device identifier, background heartbeat, Wi-Fi credentials, local address, or printer details are added. Browser Do Not Track/Global Privacy Control suppresses these labels without blocking updates. GitHub mirror URLs remain unchanged. Reports are self-reported context, not proof of an installed or running conveyor.
 
 ### FAQ / Troubleshooting
 
