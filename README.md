@@ -31,12 +31,13 @@
 > [!TIP] 
 > The public installer is at https://t0nyz.com/flasher.
 
-## What's new in v1.5.2
+## What's new in v1.5.3
 
-Version 1.5.2 builds on the responsive v1.5 control center and MQTT status-light recovery without changing the established motor timing.
+Version 1.5.3 builds on the responsive v1.5 control center and MQTT status-light recovery without changing the established motor timing.
 
 - Opens Settings automatically when Wi-Fi or MQTT printer setup is incomplete; configured and motion-only devices still open Overview
 - Hides superseded beta releases after a public release is available
+- Offers original v1.5.1 files as previous stable, with accurate rollback messages and separate v1.4.2 legacy recovery
 
 - Live Wi-Fi, printer, MQTT, conveyor, and physical LED status
 - Manual run and emergency stop controls
@@ -93,7 +94,7 @@ The **Bambu Poop Conveyor** supports two methods for triggering the conveyor, de
 
 #### 1. MQTT Mode (Recommended for X1C) (Default setting)
 - Best suited for **X1C printers** due to their more powerful CPU, which handles MQTT updates more efficiently.
-- Listens for printer status changes and automatically activates the conveyor using your saved event rules. The defaults retain nozzle cleaning and filament-change behavior, and v1.5.2 can add any known printer stage or print lifecycle state.
+- Listens for printer status changes and automatically activates the conveyor using your saved event rules. The defaults retain nozzle cleaning and filament-change behavior, and v1.5.3 can add any known printer stage or print lifecycle state.
 - Requires a stable network connection and correct MQTT setup.
 
 #### 2. IR Motion Detection Mode (Better for P1 & A1 Series)
@@ -130,7 +131,7 @@ To install the firmware, use one of the following methods:
    - Alternatively, download the precompiled ESPTool from the official Espressif GitHub.
 
 #### **2. Download the Firmware File**  
-   - Download `Bambu-Poop-Conveyor-v1.5.2-merged.bin` from the **[GitHub Releases](https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/releases/latest)** page.
+   - Download `Bambu-Poop-Conveyor-v1.5.3-merged.bin` from the **[GitHub Releases](https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/releases/latest)** page.
 
 #### **3. Connect Your ESP32**  
    - Plug your ESP32 into your computer using a USB cable.  
@@ -148,7 +149,7 @@ To install the firmware, use one of the following methods:
    - Replace `<PORT>` with your ESP32’s serial port (e.g., `/dev/tty.usbserial-1`):  
      ```sh
      esptool --chip esp32 --port /dev/tty.usbserial-1 --baud 460800 write-flash \
-       0x0 Bambu-Poop-Conveyor-v1.5.2-merged.bin
+       0x0 Bambu-Poop-Conveyor-v1.5.3-merged.bin
      ```  
 
 #### **6. Verify Flashing and Restart**  
@@ -208,11 +209,12 @@ The firmware checks three independent website channels:
 
 - Public: `https://t0nyz.com/flasher/latest.json`
 - Optional pre-release channel, when a test build is published
-- Rollback: `https://t0nyz.com/flasher/rollback.json`
+- Previous stable: `https://t0nyz.com/flasher/previous-stable.json`
+- Legacy recovery for older clients: `https://t0nyz.com/flasher/rollback.json`
 
 Each channel manifest can provide both a primary `bin` URL and an optional `githubBin` mirror. A single global **Firmware source** selector defaults to **Developer Site (t0nyz.com)** and can switch public, beta, and rollback downloads to GitHub; a channel's install button is disabled if its mirror is not available yet. Versioned mirror binaries are stored under `firmware/releases/` so the raw GitHub URL supports browser-based one-click installation; GitHub Release assets remain available for ordinary manual downloads.
 
-The public v1.5.2 USB installer is available at `https://t0nyz.com/flasher`. The public installer and the device Update tab also provide access to the checksum-verified v1.4.2 rollback. OTA rollback retains stored settings; a clean USB recovery can erase them.
+The public v1.5.3 USB installer is available at `https://t0nyz.com/flasher`. The public installer and the new device Update tab offer the checksum-verified v1.5.1 previous stable. Original v1.4.2 files remain available as legacy recovery; its existing feed is unchanged for older firmware. OTA rollback retains stored settings; a clean USB recovery can erase them.
 
 When the public release supersedes a beta, the Update screen shows **No newer beta available** and hides its install button. Old beta files remain archived; they are not silently replaced with stable files.
 
@@ -239,7 +241,7 @@ When no motor cycle is active, yellow begins flashing after a five-second printe
 
 ### Home Assistant
 
-v1.5.2 keeps Home Assistant support in this firmware—no alternate firmware is required. Replace `192.168.1.116` below with the ESP32's reserved IP address.
+v1.5.3 keeps Home Assistant support in this firmware—no alternate firmware is required. Replace `192.168.1.116` below with the ESP32's reserved IP address.
 
 ```yaml
 rest_command:
