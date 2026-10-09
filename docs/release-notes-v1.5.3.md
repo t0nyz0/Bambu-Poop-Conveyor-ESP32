@@ -14,10 +14,3 @@ Use a working device's **Update** screen or upload `Bambu-Poop-Conveyor-v1.5.3-o
 The merged image includes the bootloader and partitions; the OTA file contains only the application. Do not upload the merged image to the device's Update screen.
 
 See the [release QA record](https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/blob/Bambu-Conveyor-ESP32/docs/release-qa-v1.5.3.md) for test evidence and coverage limits.
-
-<details>
-<summary>Update-request privacy</summary>
-
-The Update screen retains the existing optional source/installed-version reporting introduced in v1.5.2. These are reported values, not authenticated device identity or fleet counts. No heartbeat or device identifier is added. Browser privacy signals are respected; see the README's Update-request privacy section for details.
-
-</details>
