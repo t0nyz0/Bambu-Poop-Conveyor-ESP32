@@ -3,7 +3,7 @@
 // 8/6/24 - TZ
 // Last updated: 10/9/26
 char version[10] = "1.5.2";
-const char displayVersion[] = "1.5.2 Beta 1";
+const char displayVersion[] = "1.5.2 Beta 2";
 
 #include <WiFi.h>
 #include <WebServer.h>

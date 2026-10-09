@@ -50,7 +50,7 @@ jobs:
           git diff --exit-code -- Bambu-Poop-Conveyor/generated_ui.h
 
       - name: Verify firmware release channels
-        run: node --test scripts/test_release_channels.mjs
+        run: node --test scripts/test_release_channels.mjs scripts/test_update_attribution.mjs
 
       - name: Verify startup routing and MQTT indicators
         run: |
