@@ -20,6 +20,7 @@ BOOT_APP = PACKAGES / "framework-arduinoespressif32" / "tools" / "partitions" / 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--version", help="Expected firmware version (defaults to the source value)")
+parser.add_argument("--artifact-version", help="Distinct beta artifact version, for example 1.5.2-beta.1")
 args = parser.parse_args()
 match = re.search(r'char version\[\d+\]\s*=\s*"([^"]+)"', SOURCE.read_text())
 if not match:
@@ -27,6 +28,15 @@ if not match:
 version = match.group(1)
 if args.version and args.version != version:
     raise SystemExit(f"Source version is {version}, not {args.version}")
+if args.artifact_version:
+    if not re.fullmatch(re.escape(version) + r"-beta\.[1-9][0-9]*", args.artifact_version):
+        raise SystemExit("Beta artifact version must match the source version and have a positive beta number")
+    beta_number = args.artifact_version.rsplit(".", 1)[1]
+    if f'const char displayVersion[] = "{version} Beta {beta_number}";' not in SOURCE.read_text():
+        raise SystemExit("Beta artifact version does not match the source display version")
+    version = args.artifact_version
+elif re.search(r'const char displayVersion\[\]\s*=\s*"[^\"]+ Beta ', SOURCE.read_text()):
+    raise SystemExit("Beta builds require --artifact-version to avoid stable-looking artifact names")
 DIST = ROOT / "dist" / f"v{version}"
 
 subprocess.run(["pio", "run"], cwd=ROOT, check=True)

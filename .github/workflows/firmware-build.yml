@@ -49,6 +49,14 @@ jobs:
           python scripts/generate_ui.py
           git diff --exit-code -- Bambu-Poop-Conveyor/generated_ui.h
 
+      - name: Verify firmware release channels
+        run: node --test scripts/test_release_channels.mjs
+
+      - name: Verify startup routing and MQTT indicators
+        run: |
+          python scripts/test_startup_routing.py
+          python scripts/test_mqtt_leds.py
+
       - name: Build ESP32 firmware
         run: pio run
 

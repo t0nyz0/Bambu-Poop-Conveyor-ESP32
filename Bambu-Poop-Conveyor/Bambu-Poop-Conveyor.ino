@@ -1,9 +1,9 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-// Last updated: 9/11/26
-char version[10] = "1.5.1";
-const char displayVersion[] = "1.5.1";
+// Last updated: 10/9/26
+char version[10] = "1.5.2";
+const char displayVersion[] = "1.5.2 Beta 1";
 
 #include <WiFi.h>
 #include <WebServer.h>

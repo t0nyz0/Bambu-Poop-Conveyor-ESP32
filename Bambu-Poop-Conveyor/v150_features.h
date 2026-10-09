@@ -260,6 +260,28 @@ static void serveWebUi() {
     server.send_P(200, "text/html; charset=utf-8", (PGM_P)WEB_UI_GZIP, WEB_UI_GZIP_LEN);
 }
 
+static bool printerSetupRequired() {
+    if (useMotionSensor) return false;
+    auto configured = [](const char* value, const char* placeholder) {
+        String text(value);
+        text.trim();
+        return text.length() > 0 && text != placeholder;
+    };
+    return !configured(mqtt_server, "your-bambu-printer-ip") ||
+           !configured(mqtt_password, "your-bambu-printer-accesscode") ||
+           !configured(serial_number, "your-bambu-printer-serial-number");
+}
+
+static void serveDefaultWebUi() {
+    if (isAPMode || printerSetupRequired()) {
+        server.sendHeader("Cache-Control", "no-store");
+        server.sendHeader("Location", "/config", true);
+        server.send(302, "text/plain", "Open Settings to complete setup.");
+        return;
+    }
+    serveWebUi();
+}
+
 static void handleApiHealth() {
     StaticJsonDocument<256> doc;
     doc["ok"] = true;
@@ -557,7 +579,7 @@ static void handleFirmwareUploadCompleteV150() {
 }
 
 static void registerV150Routes() {
-    server.on("/", HTTP_GET, serveWebUi);
+    server.on("/", HTTP_GET, serveDefaultWebUi);
     server.on("/config", HTTP_GET, serveWebUi);
     server.on("/control", HTTP_GET, serveWebUi);
     server.on("/logs", HTTP_GET, serveWebUi);
