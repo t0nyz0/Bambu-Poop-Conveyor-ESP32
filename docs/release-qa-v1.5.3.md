@@ -18,7 +18,7 @@ v1.5.3 is prepared on the release branch, not yet promoted to the default branch
 
 ## Required before official promotion
 
-1. Restore access to the authorized test ESP32, previously at `10.0.0.44`; it currently fails HTTP/mDNS checks, while Chrome owns its USB port.
+1. Restore Wi-Fi access to the authorized test ESP32, previously at `10.0.0.44`. On retry, Chrome released USB; the board answered Improv with state 2 (not Wi-Fi-connected). One normal USB restart, with no erase or settings write, started its setup hotspot and web server instead of joining the home network. User-assisted Wi-Fi setup is required before OTA acceptance.
 2. Install published Beta 1 OTA, verify new boot, all routes, Wi-Fi, idle motor, configuration and trigger fingerprints, and accurate v1.5.1 rollback messages.
 3. Roll back to immutable v1.5.1 and return to Beta 1; verify fingerprints and Wi-Fi after both transitions.
 4. Install final stable candidate, rerun acceptance and stable CI, then publish the immutable official release and promote both repositories.
