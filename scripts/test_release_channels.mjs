@@ -19,6 +19,19 @@ test('release button styles respect the hidden attribute', () => {
   assert.match(html, /\.release-install\[hidden\]\s*\{\s*display\s*:\s*none\s*\}/);
 });
 
+test('previous stable uses a versioned compatible feed without replacing the legacy recovery feed',()=>{
+  assert.match(html,/rollback:'https:\/\/t0nyz\.com\/flasher\/previous-stable\.json'/);
+});
+
+test('previous-stable display and confirmation use the selected release, not a hard-coded legacy version',async()=>{
+  const h=harness('1.5.3');h.ctx.paintRelease('rollback',fulfilled(release('1.5.1')));
+  assert.equal(h.$('#rollbackInstall').textContent,'Roll back to v1.5.1');
+  assert.doesNotMatch(h.$('#rollbackStatus').textContent,/before v1\.5|v1\.4\.2/);
+  await h.ctx.installRelease('rollback');
+  assert.match(h.confirmations[0],/Roll back to v1\.5\.1/);
+  assert.doesNotMatch(h.confirmations[0],/v1\.4\.2/);
+});
+
 function harness(current = '1.5.1') {
   const elements = new Map();
   const state = { releases: {}, status: current ? { version: current, displayVersion: current } : null };

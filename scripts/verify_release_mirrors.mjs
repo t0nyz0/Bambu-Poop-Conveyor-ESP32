@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 
 const base = process.argv[2] || 'https://t0nyz.com';
-for (const path of ['/flasher/latest.json', '/flasher-beta/latest.json', '/flasher/rollback.json']) {
+for (const path of ['/flasher/latest.json', '/flasher-beta/latest.json', '/flasher/previous-stable.json', '/flasher/rollback.json']) {
   const descriptor = await fetch(new URL(path, base), { signal: AbortSignal.timeout(20000) });
   assert.equal(descriptor.status, 200, `${path}: descriptor must be reachable`);
   const release = await descriptor.json();

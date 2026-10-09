@@ -5,12 +5,12 @@ import {test} from 'node:test';
 import vm from 'node:vm';
 
 const html=readFileSync(new URL('../web/index.html',import.meta.url),'utf8');
-const names=['updateRequestUrl','fetchRelease','installRelease','validateFirmware'];
+const names=['versionParts','compareVersions','updateRequestUrl','fetchRelease','installRelease','validateFirmware'];
 const functions=names.map(name=>{
   const line=html.split('\n').find(l=>l.startsWith(`function ${name}(`)||l.startsWith(`async function ${name}(`));
   assert.ok(line,`Missing production function: ${name}`);return line;
 }).join('\n');
-const urls=['https://t0nyz.com/flasher/latest.json','https://t0nyz.com/flasher-beta/latest.json','https://t0nyz.com/flasher/rollback.json'];
+const urls=['https://t0nyz.com/flasher/latest.json','https://t0nyz.com/flasher-beta/latest.json','https://t0nyz.com/flasher/previous-stable.json'];
 const installed='1.5.2 Beta 2';
 const image=new Uint8Array(65536);image[0]=0xE9;
 
@@ -104,4 +104,12 @@ test('site downloads keep the exact image, filename and rollback handoff; mirror
 test('canceling an install sends no file request and causes no upload',async()=>{
   const h=harness({accept:false});h.state.releases.stable={version:'1.5.1',bin:'https://t0nyz.com/flasher/firmware/test.bin'};
   await h.ctx.installRelease('stable');assert.equal(h.requests.length,0);assert.equal(h.uploads.length,0);
+});
+
+test('v1.5.1 rollback uses modern boot verification rather than v1.4.2 legacy fallback',async()=>{
+  for(const source of ['site','github']){
+    const h=harness();h.$('#downloadSource').value=source;
+    h.state.releases.rollback={version:'1.5.1',bin:'https://t0nyz.com/flasher/Bambu-Poop-Conveyor-v1.5.1-ota.bin',githubBin:'https://raw.githubusercontent.com/t0nyz0/project/main/old.bin'};
+    await h.ctx.installRelease('rollback');assert.equal(h.uploads.length,1);assert.equal(h.uploads[0].rollback,false);
+  }
 });
