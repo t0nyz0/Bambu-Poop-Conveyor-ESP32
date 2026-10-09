@@ -46,7 +46,29 @@ Wi-Fi provisioning flags, USB offsets, `/flasher` slash variants, and legacy
   Merged USB SHA-256: `6331208d893e32e42f2dda9da0299f125290e00ba91a1b46dee01d805d02573b`.
   The merged image contains the exact OTA at offset `0x10000`; its bootloader
   and partition prefix are byte-identical to the official v1.5.1 image.
-- Publication and final live checks are recorded below after deployment.
+- Default-branch CI run `37999522637` passed at commit `dd7b050`.
+  Official GitHub release `Release-v1.5.2` is public, non-prerelease, and latest,
+  with separate merged/OTA assets and matching SHA-256 digests.
+- Website commit `6844ecc` deployed to production READY on Vercel
+  (`dpl_6MFEwGMQn2M97vPGPXyH1EJ3w6Xu`, Next.js, 88.7-second build).
+  Production HTTP tests passed `/flasher`, `/flasher/`, `/flasher/index.html`,
+  `/flasher/install.html`, all active/rollback/archived-beta manifests and their
+  full USB parts, checksums, CORS, and unauthenticated admin rejection.
+- Live stable, archived Beta 2, and v1.4.2 OTA downloads were byte-identical
+  between Developer Site and GitHub, with correct checksums and browser CORS.
+  Historical files, rollback metadata, offsets and provisioning flags stayed
+  unchanged; the active USB manifest alone moved to the approved v1.5.2 image.
+- The real test-device Update screen shows public v1.5.2 installed,
+  **No newer beta available** with no beta install button, and available v1.4.2
+  rollback. GitHub selection leaves public and rollback buttons enabled.
+  Triggers and logs loaded; no browser console errors were observed.
+- Actual Update-screen requests for installed **1.5.2** reached the production
+  database as `device_webui` / `reported`, and the authenticated dashboard showed
+  that stable installed-version category. Production article version/file links
+  and GitHub's latest-release endpoint matched v1.5.2.
+- Production error-level logs contained only the existing PostgreSQL SSL-mode
+  deprecation warning emitted on stderr; no application exception was observed
+  in the checked release window. Database/auth configuration was not changed.
 
 ## Coverage limits
 
