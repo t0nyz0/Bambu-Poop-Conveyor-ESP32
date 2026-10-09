@@ -36,7 +36,17 @@ Wi-Fi provisioning flags, USB offsets, `/flasher` slash variants, and legacy
 
 ## Stable acceptance
 
-Pending final stable build, physical OTA, CI, publication and live checks.
+- Final stable candidate CI run `37999001573` passed. The web UI/application
+  changes are identical to Beta 2; only the firmware display label changed.
+- The test ESP32 accepted the checksum-verified final OTA and rebooted from
+  boot ID `1910643462` to `3807444624`, reporting **1.5.2**. Saved configuration
+  and trigger fingerprints remained unchanged, Wi-Fi reconnected, the motor
+  stayed idle, and missing printer details still routed the root to Settings.
+- OTA SHA-256: `cffe6cbd907d1a866cbc143e05737cf47c01b6d0fbfed35a006a6196ae2edf28`.
+  Merged USB SHA-256: `6331208d893e32e42f2dda9da0299f125290e00ba91a1b46dee01d805d02573b`.
+  The merged image contains the exact OTA at offset `0x10000`; its bootloader
+  and partition prefix are byte-identical to the official v1.5.1 image.
+- Publication and final live checks are recorded below after deployment.
 
 ## Coverage limits
 
