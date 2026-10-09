@@ -1,6 +1,6 @@
 # v1.5.2 Beta 1
 
-Local candidate; not a public stable release.
+Beta test release; public stable v1.5.1 remains unchanged.
 
 - Open Settings automatically at the device root URL when MQTT printer IP,
   access code, or serial number is missing (including old placeholder values).
