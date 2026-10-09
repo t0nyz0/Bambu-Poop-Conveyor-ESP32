@@ -7,7 +7,7 @@ v1.5.3 is prepared on the release branch, not yet promoted to the default branch
 - Beta build and GitHub Actions `38001022018` passed: 25 updater/attribution checks, 15 startup-routing cases, 14 MQTT/LED cases, generated-UI consistency, and ESP32 compilation.
 - Final stable build passed locally. Its UI is identical to Beta 1; only the firmware display label changes. OTA is 1,183,920 bytes, within the 1,310,720-byte application slot.
 - Final stable candidate GitHub Actions `38001440133` also passed all 54 firmware cases, embedded-UI consistency, compilation and artifact upload at `4ac082f`. This is build/host evidence, not physical acceptance.
-- Website candidate branch `codex/v1.5.3-public-promotion`, commit `65a004a`, passed 23 analytics/release guards, the full Next.js build, and local HTTP manifest/file/admin-access checks. Its public-channel changes are not merged to production until the device round trip passes. The article's actual Update screenshot remains pending replacement after hardware acceptance.
+- Website candidate branch `release/v1.5.3`, commit `65a004a`, passed 23 analytics/release guards, the full Next.js build, and local HTTP manifest/file/admin-access checks. Its public-channel changes are not merged to production until the device round trip passes. The article's actual Update screenshot remains pending replacement after hardware acceptance.
 - Both beta and stable merged images contain the exact OTA at `0x10000`. Both bootloader/partition prefixes match immutable v1.5.1.
 - Original v1.5.1 OTA SHA-256: `4ab6495db6c3dc43fc0859330d9bfebdffa3494a09097c6c692c3373eccc4fe0`.
 - Stable candidate OTA SHA-256: `8342c8387b469c76f872346ace7d5d1a948b80e8f96f0398598defd6a38da852`.
