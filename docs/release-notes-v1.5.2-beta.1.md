@@ -50,4 +50,36 @@ prove USB flashing, hotspot behavior, or motor operation on physical hardware.
 - All three currently published GitHub OTA mirrors returned HTTP 200, allowed
   local-browser downloads via CORS, and matched their website files byte for byte
   and by published SHA-256. This verifies existing mirrors, not a published Beta 1.
-- No website files, manifests, stable/rollback binaries, or devices were changed.
+- During local preparation, no website files, manifests, stable/rollback binaries,
+  or devices were changed. Publication and hardware results follow below.
+
+### Beta publication and device acceptance, 2026-10-09
+
+- GitHub prerelease `v1.5.2-beta.1` published with full USB image, OTA image,
+  and checksums. The latest stable GitHub release remains `Release-v1.5.1`.
+- GitHub Actions run `37993353874` passed the firmware build, embedded-UI
+  generation check, and all 41 automated updater/startup/LED scenarios.
+- Website commit `c498bf2` deployed READY to t0nyz.com. Only the beta installer,
+  descriptor, manifest, checksum list, new beta binaries, and release tests changed.
+  Public v1.5.1 and v1.4.2 rollback assets/routes remain byte-identical.
+- All live slash variants, legacy `install.html`, manifest references, firmware
+  downloads/checksums, and unauthorized admin responses passed. All stable, beta,
+  and rollback OTA mirrors passed HTTP, CORS, checksum, and byte-equality checks.
+- The in-app browser stalled at the one-click JavaScript confirmation before
+  any upload. The hardware test instead downloaded the GitHub OTA, verified its
+  checksum, and uploaded it through the device's existing `/update` API.
+- The test ESP32 accepted the upload (`HTTP 200`, `ok: true`), rebooted with a new
+  boot ID, reported `1.5.2 Beta 1`, and reconnected to Wi-Fi. All saved configuration
+  fields matched their pre-install fingerprint; no credential values were recorded.
+- On that printer-unconfigured device, `/` returned `302 Location: /config`.
+  The actual browser opened Settings and showed Beta 1. Served HTML matched the
+  committed source exactly. Overview, Triggers, Logs, and Update loaded, including
+  legacy `/status`. GitHub selection enabled the three available release actions.
+- No browser console errors/warnings were observed in the new device QA tab.
+
+This verifies a real settings-preserving OTA installation and the missing-printer
+redirect. It does **not** establish a successful automated browser-confirmation
+flow, a fresh erased-device USB install, physical hotspot provisioning, real-printer
+MQTT triggering, or a prolonged hardware soak. These remain separate acceptance
+checks before stable promotion. No printer credentials or operation-mode changes
+were made merely to simulate a configured printer.
