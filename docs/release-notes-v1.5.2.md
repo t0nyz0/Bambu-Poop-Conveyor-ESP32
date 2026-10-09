@@ -29,15 +29,3 @@ and upload/reboot behavior are unchanged from the established v1.5.1 behavior.
 See the [release QA record](https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/blob/Bambu-Conveyor-ESP32/docs/release-qa-v1.5.2.md)
 for automated tests, actual ESP32 OTA acceptance, installer paths, mirror checks,
 and explicit limits on fresh USB, physical hotspot, printer, and soak coverage.
-
-<details>
-<summary>Update-request privacy</summary>
-
-Existing Developer Site Update-screen requests include their source and installed
-version for aggregate usage statistics. These are self-reported values, not
-authenticated identity, installation success, or unique-device counts. No extra
-request, heartbeat, device identifier, credentials, local address, or printer
-details are added. Browser privacy preferences are respected; GitHub URLs are
-unchanged, and reporting failures cannot block downloads.
-
-</details>
