@@ -8,7 +8,7 @@ function harness(){
   const elements=new Map(),requests=[],messages=[];
   const $=key=>{if(!elements.has(key)){const classes=new Set();elements.set(key,{disabled:false,textContent:'',classList:{add(...names){names.forEach(n=>classes.add(n))},remove(...names){names.forEach(n=>classes.delete(n))},toggle(n,on){on?classes.add(n):classes.delete(n)},contains:n=>classes.has(n)},setAttribute(k,v){this[k]=v}})}return elements.get(key)};
   const state={status:null,countdownPhase:'Idle',countdownEndAt:0};
-  const ctx=vm.createContext({$,state,AbortSignal,performance:{now:()=>0},api:async(...a)=>{requests.push(a);return ctx.response(...a)},toast:m=>messages.push(m),updateSettingsStatus(){},paint(s){state.status=s;state.statusUnavailable=false;$('#connection').textContent='Online';ctx.paintOverviewFreshness()}});
+  const ctx=vm.createContext({$,state,discovery:{},recoverPrinterDiscovery(){},AbortSignal,performance:{now:()=>0},api:async(...a)=>{requests.push(a);return ctx.response(...a)},toast:m=>messages.push(m),updateSettingsStatus(){},paint(s){state.status=s;state.statusUnavailable=false;$('#connection').textContent='Online';ctx.paintOverviewFreshness()}});
   vm.runInContext(['status','printerIdentityText','paintPrinter','paintOverviewFreshness','paintCountdown','countdownRemaining','countdown'].map(inline).join('\n'),ctx);
   return {ctx,state,$,requests,messages};
 }
