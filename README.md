@@ -218,7 +218,7 @@ The application hosts a responsive control center for status, manual control, se
 - **Trigger catalog:** `GET /api/trigger-catalog`
 - **Logs:** `/api/logs`
 
-The firmware checks three independent website channels:
+The current Update screen checks three independent website channels; a separate legacy feed remains available for older firmware:
 
 - Public: `https://t0nyz.com/flasher/latest.json`
 - Optional pre-release channel, when a test build is published

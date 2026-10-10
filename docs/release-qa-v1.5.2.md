@@ -18,24 +18,24 @@ Wi-Fi provisioning flags, USB offsets, `/flasher` slash variants, and legacy
 - Live stable, beta, and rollback OTA downloads from both sources matched their
   checksums and bytes and allowed local-browser CORS. USB manifests referenced
   the right full images; slash variants and legacy installer passed.
-- The test ESP32 at `10.0.0.44` accepted the checksum-verified GitHub Beta 2 OTA
-  through `/update`. Boot ID changed from `2163317787` to `1910643462`, and the
-  returned health endpoint reported **1.5.2 Beta 2**. Saved configuration and
+- The test ESP32 accepted the checksum-verified GitHub Beta 2 OTA through
+  `/update`. A new boot was verified, and the returned health endpoint reported
+  **1.5.2 Beta 2**. Saved configuration and
   trigger fingerprints were unchanged; Wi-Fi reconnected and the motor stayed
   idle. The unconfigured-printer root redirects to Settings.
 - The device served the exact committed UI on `/config`, `/control`, `/logs`,
   and `/update`. Logs, Overview, Triggers, Settings, and Update loaded in the
   actual browser with no console errors. MQTT was intentionally unconfigured.
 - The automation backend stalled at the native one-click confirmation before
-  uploading. It exposed no accessible dialog; the agent-owned stalled tab was
+  uploading. It exposed no accessible dialog; the stalled test tab was
   closed. This was not counted as a successful automated one-click install.
 
 ## Stable acceptance
 
 - Final stable candidate CI run `37999001573` passed. The web UI/application
   changes are identical to Beta 2; only the firmware display label changed.
-- The test ESP32 accepted the checksum-verified final OTA and rebooted from
-  boot ID `1910643462` to `3807444624`, reporting **1.5.2**. Saved configuration
+- The test ESP32 accepted the checksum-verified final OTA and returned with a
+  verified new boot, reporting **1.5.2**. Saved configuration
   and trigger fingerprints remained unchanged, Wi-Fi reconnected, the motor
   stayed idle, and missing printer details still routed the root to Settings.
 - OTA SHA-256: `cffe6cbd907d1a866cbc143e05737cf47c01b6d0fbfed35a006a6196ae2edf28`.
