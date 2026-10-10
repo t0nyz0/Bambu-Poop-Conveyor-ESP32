@@ -6,7 +6,7 @@ import {createHash} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 
 const [file,label,mirror]=process.argv.slice(2);
-assert.ok(file && label && mirror,'Specify OTA image, expected display version, and HTTPS mirror');
+assert.ok(file && label && mirror,'Specify OTA image, expected display version, and HTTPS mirror or --local-only');
 const base='http://10.0.0.44'; // Only the user-authorized test ESP32.
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const stableJSON=value=>JSON.stringify(value,(_,v)=>v && !Array.isArray(v) && typeof v==='object'
@@ -19,11 +19,18 @@ const configHash=digest(stableJSON(await get('/api/config')));
 const triggersHash=digest(stableJSON(await get('/api/triggers')));
 const bytes=await readFile(file);
 assert.equal(bytes[0],0xe9);assert.ok(bytes.length>=65536 && bytes.length<=1310720);
+if(mirror==='--local-only'){
+  const sums=await readFile(file.replace(/[^/]+$/,'SHA256SUMS.txt'),'utf8');
+  assert.ok(sums.split('\n').some(line=>line.startsWith(digest(bytes)+'  ')&&line.endsWith(file.split('/').pop())),'Local package checksum must match');
+  console.log('Unpublished local OTA package checksum verified; no mirror publication required.');
+}else{
 const url=new URL(mirror);assert.equal(url.protocol,'https:');assert.equal(url.hostname,'raw.githubusercontent.com');
 const response=await fetch(url,{headers:{Origin:base},signal:AbortSignal.timeout(30000)});
 assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),'*');
 assert.deepEqual(Buffer.from(await response.arrayBuffer()),bytes,'Published mirror must match the tested artifact');
-console.log('Published OTA mirror verified; conveyor is idle. Configuration and trigger fingerprints captured without exposing values.');
+console.log('Published OTA mirror verified.');
+}
+console.log('Conveyor is idle. Configuration and trigger fingerprints captured without exposing values.');
 const data=new FormData();data.append('firmware',new File([bytes],file.split('/').pop(),{type:'application/octet-stream'}));
 const upload=await fetch(base+'/update',{method:'POST',body:data,signal:AbortSignal.timeout(60000)});
 assert.equal(upload.status,200);assert.equal((await upload.json()).ok,true);

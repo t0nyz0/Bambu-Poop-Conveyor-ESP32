@@ -52,6 +52,9 @@ void addLogEntry(const std::string&) {}
 void publishPushAllMessage() {}
 void evaluateTriggerRules() {}
 void serviceScheduledRestart() {}
+void servicePrinterDiscovery() {} // The discovery service is tested separately.
+bool setupRequired = false;
+bool printerSetupRequired() { return setupRequired; } // Routing tested separately.
 struct SerialMock {
     template <typename T> void print(const T&) {}
     template <typename T> void println(const T&) {}
@@ -105,7 +108,19 @@ int main(int argc, char** argv) {
     if (argc != 2) return 2;
     const std::string test = argv[1];
     try {
-        if (test == "connected_idle") {
+        if (test == "incomplete_setup_skips_mqtt") {
+            setupRequired = true;
+            client.online = false;
+            client.connectDelay = 10000;
+            connectToMqtt();
+            check(client.attempts == 0 && now == 1000, "incomplete setup must not start a blocking MQTT connection");
+            tick(16000);
+            check(client.attempts == 0 && now == 16000, "reconnect loop must stay nonblocking during setup");
+            setupRequired = false;
+            client.connectSucceeds = true;
+            connectToMqtt();
+            check(client.attempts == 1 && client.connected(), "completed setup must restore normal MQTT connection");
+        } else if (test == "connected_idle") {
             tick(1000);
             tick(16000);
             lights(HIGH, LOW, LOW);
@@ -234,7 +249,7 @@ TESTS = (
     "short_disconnect_recovery", "failed_reconnect", "waiting_reconnect",
     "waiting_failed_reconnect", "running_reconnect", "running_failed_reconnect",
     "normal_motor_cycle", "motion_motor_cycle", "motor_stops_while_disconnected",
-    "cooldown_reconnect", "ap_mode_untouched",
+    "cooldown_reconnect", "ap_mode_untouched", "incomplete_setup_skips_mqtt",
 )
 
 

@@ -578,6 +578,8 @@ static void handleFirmwareUploadCompleteV150() {
     restartAt = millis() + 2500;
 }
 
+#include "printer_discovery.h"
+
 static void registerV150Routes() {
     server.on("/", HTTP_GET, serveDefaultWebUi);
     server.on("/config", HTTP_GET, serveWebUi);
@@ -588,6 +590,8 @@ static void registerV150Routes() {
     server.on("/api/status", HTTP_GET, handleApiStatus);
     server.on("/api/config", HTTP_GET, handleApiConfigGet);
     server.on("/api/config", HTTP_POST, handleApiConfigPost);
+    server.on("/api/printer-discovery", HTTP_GET, handlePrinterDiscoveryGet);
+    server.on("/api/printer-discovery", HTTP_POST, handlePrinterDiscoveryPost);
     server.on("/api/triggers", HTTP_GET, handleApiTriggersGet);
     server.on("/api/triggers", HTTP_POST, handleApiTriggersPost);
     server.on("/api/trigger-catalog", HTTP_GET, handleApiTriggerCatalog);

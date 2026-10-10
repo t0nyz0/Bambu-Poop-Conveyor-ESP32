@@ -2,8 +2,8 @@
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
 // Last updated: 10/9/26
-char version[10] = "1.5.3";
-const char displayVersion[] = "1.5.3";
+char version[10] = "1.5.4";
+const char displayVersion[] = "1.5.4";
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -797,6 +797,9 @@ void publishPushAllMessage() {
 
 // Function to connect to MQTT
 void connectToMqtt() {
+    // During initial setup, an empty/placeholder target must not stall the
+    // Settings page or its local discovery search with connection attempts.
+    if (printerSetupRequired()) return;
     if (!client.connected()) {
         if (debug) {
             Serial.print("Connecting to MQTT...");
@@ -1035,6 +1038,7 @@ void loop() {
     server.handleClient();
     dnsServer.processNextRequest();  // Handle captive portal redirects
     serviceScheduledRestart();
+    servicePrinterDiscovery();
 
     if (isAPMode) return;  // Skip all WiFi/MQTT logic if in AP mode
 
