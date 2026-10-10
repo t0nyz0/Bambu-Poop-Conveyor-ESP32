@@ -114,15 +114,153 @@ test('Settings tab and Overview notice reflect saved setup, not a typed draft or
   const button=$('.nav button[data-view="settings"]');assert.equal(button.classList['needs-setup'],true);assert.match(button['aria-label'],/setup needed/);assert.equal($('#overviewSetup').hidden,false);
   ctx.paintSetupNotice({setupRequired:false,mqtt:{connected:false}});assert.equal(button.classList['needs-setup'],false);assert.equal(button.textContent,'Settings');assert.equal($('#overviewSetup').hidden,true);
 });
-function saveHarness(){
+function saveHarness(integrated=false){
   const elements=new Map(),requests=[],timers=[];
-  const $=key=>{if(!elements.has(key))elements.set(key,{value:'',dataset:{},className:'',textContent:'',attributes:{},setAttribute(k,v){this.attributes[k]=v}});return elements.get(key)};
-  for(const [id,value] of Object.entries({ssid:'Workshop',pass:'TEST-ONLY',printerIp:'10.0.0.50',serial:'01PTEST',access:'TEST-ONLY',model:'P1'}))$('#'+id).value=value;
-  const state={bootId:100,config:{...saved},savedConfig:{...saved}};
-  const ctx=vm.createContext({$,state,AbortSignal,secretInputValue:id=>$('#'+id).value,performance:{now:()=>ctx.now},now:0,updateSettingsStatus:()=>{},updateSecretHints:()=>{},paint:()=>{},setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length},clearTimeout(){},api:async(path,options)=>{requests.push({path,options});return ctx.response(path,options)}});
-  vm.runInContext(['setSecretVisibility','resetSavedSecret','sectionSettingsPayload','sectionConnectionVerified','finishSectionSave','checkSectionSave','saveSettingsSection'].map(inline).filter(Boolean).join('\n'),ctx);
+  const $=key=>{if(!elements.has(key))elements.set(key,{value:'',type:'password',dataset:{},className:'',textContent:'',attributes:{},needs:false,setAttribute(k,v){this.attributes[k]=v},addEventListener(){},closest(){return {classList:{toggle:(_,v)=>this.needs=v},appendChild:node=>elements.set('#'+node.id,node)}}});return elements.get(key)};
+  for(const [id,value] of Object.entries({mode:'mqtt',ssid:'Workshop',pass:'TEST-ONLY',printerIp:'10.0.0.50',serial:'01PTEST',access:'TEST-ONLY',model:'P1'}))$('#'+id).value=value;
+  const state={bootId:100,config:{...saved},savedConfig:{...saved},status:live};
+  const ctx=vm.createContext({$,state,AbortSignal,secretInputValue:id=>$('#'+id).value,performance:{now:()=>ctx.now},now:0,document:{createElement:()=>({})},syncDownloadSource:()=>{},updateSettingsStatus:()=>{},updateSecretHints:()=>{},paint:s=>{state.status=s;state.statusUnavailable=false;ctx.updateSettingsStatus()},toast:()=>{},waitForReturn:boot=>{ctx.waitBoot=boot},loadConfig:()=>{ctx.configReloads=(ctx.configReloads||0)+1},setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length},clearTimeout(){},api:async(path,options)=>{requests.push({path,options});return ctx.response(path,options)}});
+  if(integrated)vm.runInContext(logic+'\n'+inline('updateSecretHints'),ctx);
+  vm.runInContext(['setSecretVisibility','resetSavedSecret','acknowledgedSettingsConfig','settingsSaveAllowed','sectionSettingsPayload','sectionConnectionVerified','finishSectionSave','checkSectionSave','saveSettingsSection'].map(inline).filter(Boolean).join('\n'),ctx);
   return {ctx,$,state,requests,timers};
 }
+function newPrinterSaveHarness(){
+  const h=saveHarness(true),before={...saved,printerIp:'',serialNumber:'',accessCodeSet:false};
+  h.state.config={...before};h.state.savedConfig={...before};h.state.status={bootId:100,mode:'mqtt',wifi:{connected:true},mqtt:{connected:false}};
+  h.$('#pass').value='';h.ctx.updateSettingsStatus();return h;
+}
+function assertPendingPrinter(h,phase){
+  assert.equal(h.state.sectionSave.phase,phase);
+  assert.equal(h.$('#printerSettings').className,'panel setup-card neutral');
+  assert.equal(h.$('#printerBadge').className,'setup-badge neutral');
+  assert.equal(h.$('#setupSummary').className,'setup-summary neutral');
+  assert.doesNotMatch(h.$('#printerHelp').textContent,/Still needed|access code/i);
+  assert.doesNotMatch(h.$('#setupSummary').textContent,/Complete Printer setup|Setup needed/i);
+  assert.match(h.$('#printerBadge').textContent,phase==='saving'?/Saving/:phase==='restart'?/Restarting/:/Checking/);
+  assert.match(h.$('#setupSummary').textContent,phase==='saving'?/Saving printer settings/:phase==='restart'?/Waiting.*restart/:/Connecting to printer/);
+  assert.equal(h.$('#savePrinter').disabled,true);assert.equal(h.$('#saveSettings').disabled,true);
+  assert.equal(h.$('#access').needs,false);
+  assert.match(h.$('#accessSavedHint').textContent,phase==='saving'?/Saving access code/:/Access code saved on device.*Masked while/);
+}
+test('first printer save stays neutral through acknowledgement, restart and MQTT checking, and marks the accepted code saved before clearing it',async()=>{
+  const h=newPrinterSaveHarness();let acknowledge;
+  h.ctx.response=()=>new Promise(resolve=>acknowledge=resolve);
+  const reset=h.ctx.resetSavedSecret,resetSnapshots=[];
+  h.ctx.resetSavedSecret=id=>{if(id==='access')resetSnapshots.push({saved:{...h.state.savedConfig},config:{...h.state.config}});return reset(id)};
+  const pending=h.ctx.saveSettingsSection('printer');assertPendingPrinter(h,'saving');
+  assert.equal(h.state.savedConfig.accessCodeSet,false,'A pending request is not acknowledgement');assert.equal(h.$('#access').value,'TEST-ONLY');
+  acknowledge({ok:true,rebooting:true});await pending;
+  assert.equal(resetSnapshots.length,1);
+  for(const accepted of Object.values(resetSnapshots[0])){
+    assert.equal(accepted.accessCodeSet,true,'Acknowledged code must be marked saved before clearing the input');
+    assert.equal(accepted.printerIp,h.$('#printerIp').value);assert.equal(accepted.serialNumber,h.$('#serial').value);
+    assert.equal(accepted.accessCode,undefined,'Accepted metadata must not retain the code text');
+  }
+  assertPendingPrinter(h,'restart');assert.equal(h.$('#access').value,'');
+  assert.equal(h.state.statusUnavailable,true,'Pre-save connection data must not verify a new save');
+  assert.match(h.$('#accessSavedHint').textContent,/Access code saved on device/);
+  h.ctx.response=()=>({bootId:100});await h.ctx.checkSectionSave();assertPendingPrinter(h,'restart');
+  h.ctx.response=path=>path==='/api/health'?{bootId:101}:path==='/api/status'?{bootId:101,mode:'mqtt',wifi:{connected:true},mqtt:{connected:false}}:{...saved};
+  await h.ctx.checkSectionSave();assertPendingPrinter(h,'checking');assert.equal(h.state.savedConfig.accessCodeSet,true);
+  h.ctx.response=path=>path==='/api/health'?{bootId:101}:path==='/api/status'?{bootId:101,mode:'mqtt',wifi:{connected:true},mqtt:{connected:true}}:{...saved};
+  await h.ctx.checkSectionSave();assert.equal(h.state.sectionSave,null);assert.equal(h.$('#printerBadge').textContent,'✓ Connected');
+  assert.equal(h.$('#printerSaveStatus').className,'good');assert.match(h.$('#printerSaveStatus').textContent,/MQTT connected/);
+});
+test('a rejected first printer save retains the entered code and does not invent accepted credential metadata',async()=>{
+  const h=newPrinterSaveHarness(),before={...h.state.savedConfig};h.ctx.response=()=>{throw Error('Rejected')};
+  await h.ctx.saveSettingsSection('printer');
+  assert.equal(h.state.sectionSave,null);assert.equal(h.$('#access').value,'TEST-ONLY');assert.deepEqual(h.state.savedConfig,before);
+  assert.equal(h.state.savedConfig.accessCodeSet,false);assert.equal(h.$('#printerSaveStatus').className,'needs');
+  assert.match(h.$('#printerSaveStatus').textContent,/Could not confirm the save/);assert.match(h.$('#accessSavedHint').textContent,/Replacement entered—not saved/);
+  assert.equal(h.$('#printerBadge').textContent,'Ready to save');assert.equal(h.$('#access').needs,false);assert.equal(h.$('#savePrinter').disabled,false);
+});
+test('an acknowledged first printer save with failed MQTT remains an actual connection failure, not a missing access code',async()=>{
+  const h=newPrinterSaveHarness();h.ctx.response=()=>({ok:true,rebooting:false});await h.ctx.saveSettingsSection('printer');
+  assertPendingPrinter(h,'checking');assert.equal(h.state.savedConfig.accessCodeSet,true);
+  h.ctx.response=path=>path==='/api/health'?{bootId:100}:path==='/api/status'?{bootId:100,mode:'mqtt',wifi:{connected:true},mqtt:{connected:false}}:{...saved};
+  h.ctx.now=61000;await h.ctx.checkSectionSave();assert.equal(h.state.sectionSave,null);
+  assert.equal(h.$('#printerSaveStatus').className,'needs');assert.match(h.$('#printerSaveStatus').textContent,/saved, but MQTT did not connect/);
+  assert.doesNotMatch(h.$('#printerSaveStatus').textContent,/✓|MQTT connected/);assert.equal(h.$('#printerBadge').textContent,'✓ Configured');
+  assert.equal(h.$('#access').needs,false);assert.equal(h.state.savedConfig.accessCodeSet,true);assert.equal(h.$('#access').value,'');
+});
+test('a printer section save with a blank existing code retains saved credentials throughout verification',async()=>{
+  const h=saveHarness(true);h.$('#access').value='';h.$('#pass').value='';h.ctx.response=()=>({ok:true,rebooting:false});
+  await h.ctx.saveSettingsSection('printer');assertPendingPrinter(h,'checking');
+  assert.equal(JSON.parse(h.requests[0].options.body).accessCode,'');assert.equal(h.state.savedConfig.accessCodeSet,true);
+  h.ctx.response=path=>path==='/api/health'?{bootId:100}:path==='/api/status'?{bootId:100,mode:'mqtt',wifi:{connected:true},mqtt:{connected:true}}:{...saved};
+  await h.ctx.checkSectionSave();assert.equal(h.state.sectionSave,null);assert.equal(h.$('#printerBadge').textContent,'✓ Connected');
+  assert.equal(h.$('#access').value,'');assert.equal(h.$('#access').needs,false);assert.equal(h.state.savedConfig.accessCodeSet,true);
+});
+test('HTTP success without an explicit accepted save does not clear credentials or mark them saved',async()=>{
+  for(const acknowledgement of [{},{ok:false,rebooting:true}]){
+    const h=newPrinterSaveHarness(),before={...h.state.savedConfig};h.ctx.response=()=>acknowledgement;
+    await h.ctx.saveSettingsSection('printer');assert.equal(h.state.sectionSave,null);
+    assert.deepEqual(h.state.savedConfig,before);assert.equal(h.$('#access').value,'TEST-ONLY');assert.equal(h.state.savedConfig.accessCodeSet,false);
+    assert.equal(h.$('#printerSaveStatus').className,'needs');assert.match(h.$('#printerSaveStatus').textContent,/Could not confirm/);
+    assert.equal(h.timers.length,0);
+  }
+});
+test('acknowledged metadata contains only allowed settings and credential presence, preserving omitted or blank stored codes',()=>{
+  const h=saveHarness(),c={...saved,wifiPasswordSet:true,marker:'prior metadata'};
+  const preserved=h.ctx.acknowledgedSettingsConfig(c,{accessCode:'',wifiPassword:'',accessCodeSet:false,wifiPasswordSet:false,unknown:'not config'});
+  assert.equal(preserved.accessCodeSet,true);assert.equal(preserved.wifiPasswordSet,true);assert.equal(preserved.unknown,undefined);
+  assert.equal(preserved.marker,'prior metadata');assert.deepEqual(c,{...saved,wifiPasswordSet:true,marker:'prior metadata'});
+  const next=h.ctx.acknowledgedSettingsConfig({...saved,accessCodeSet:false,wifiPasswordSet:false},{printerIp:'10.0.0.60',serialNumber:'NEW-PRINTER',printerModel:'H2',accessCode:'TEST-ONLY',wifiPassword:'TEST-ONLY',unknown:'not config'});
+  assert.equal(next.printerIp,'10.0.0.60');assert.equal(next.serialNumber,'NEW-PRINTER');assert.equal(next.printerModel,'H2');
+  assert.equal(next.accessCodeSet,true);assert.equal(next.wifiPasswordSet,true);
+  assert.equal(next.accessCode,undefined);assert.equal(next.wifiPassword,undefined);assert.equal(next.unknown,undefined);
+});
+test('acknowledging a printer save invalidates a previously connected MQTT sample until a fresh connection check succeeds',async()=>{
+  const h=newPrinterSaveHarness();h.state.status={bootId:100,mode:'mqtt',wifi:{connected:true},mqtt:{connected:true}};
+  h.ctx.response=()=>({ok:true,rebooting:false});await h.ctx.saveSettingsSection('printer');
+  assertPendingPrinter(h,'checking');assert.equal(h.state.statusUnavailable,true);
+  assert.notEqual(h.$('#printerBadge').textContent,'✓ Connected');assert.notEqual(h.$('#printerSaveStatus').className,'good');
+  h.ctx.response=path=>path==='/api/health'?{bootId:100}:path==='/api/status'?{bootId:100,mode:'mqtt',wifi:{connected:true},mqtt:{connected:true}}:{...saved};
+  await h.ctx.checkSectionSave();assert.equal(h.state.statusUnavailable,false);assert.equal(h.state.sectionSave,null);
+  assert.equal(h.$('#printerBadge').textContent,'✓ Connected');assert.equal(h.$('#printerSaveStatus').className,'good');
+});
+test('full Save marks accepted credentials before reset, invalidates old status, and forces an authoritative configuration reload',async()=>{
+  const h=newPrinterSaveHarness();h.state.status={bootId:100,mode:'mqtt',wifi:{connected:true},mqtt:{connected:true}};
+  vm.runInContext(html.split('\n').find(line=>line.startsWith("$('#saveSettings').onclick=")),h.ctx);
+  const reset=h.ctx.resetSavedSecret,snapshots=[];
+  h.ctx.resetSavedSecret=id=>{snapshots.push({id,saved:{...h.state.savedConfig},config:h.state.config,unavailable:h.state.statusUnavailable});return reset(id)};
+  h.ctx.response=()=>({ok:true,rebooting:true});await h.$('#saveSettings').onclick();
+  assert.equal(snapshots.length,2);
+  for(const snapshot of snapshots){assert.equal(snapshot.saved.accessCodeSet,true);assert.equal(snapshot.saved.accessCode,undefined);assert.equal(snapshot.saved.wifiPassword,undefined);assert.equal(snapshot.config,null);assert.equal(snapshot.unavailable,true)}
+  assert.equal(h.$('#access').value,'');assert.equal(h.state.savedConfig.accessCodeSet,true);assert.equal(h.state.config,null);
+  assert.equal(h.state.fullSettingsSave,true);assert.equal(h.ctx.waitBoot,100);
+});
+for(const outcome of ['success','error'])test('a delayed pre-save status '+outcome+' cannot overwrite freshness after accepted section or full Save',async()=>{
+  for(const scope of ['printer','full']){
+    const h=newPrinterSaveHarness(),previous=h.state.status,oldConnected={bootId:100,mode:'mqtt',wifi:{connected:true},mqtt:{connected:true}};
+    let resolveOld,rejectOld,paintCalls=0,freshnessCalls=0,readinessCalls=0;
+    const paint=h.ctx.paint,update=h.ctx.updateSettingsStatus;
+    h.ctx.paint=s=>{paintCalls++;return paint(s)};
+    h.ctx.paintOverviewFreshness=()=>freshnessCalls++;
+    h.ctx.updateSettingsStatus=()=>{readinessCalls++;return update()};
+    vm.runInContext(inline('status'),h.ctx);
+    if(scope==='full')vm.runInContext(html.split('\n').find(line=>line.startsWith("$('#saveSettings').onclick=")),h.ctx);
+    h.ctx.response=(path,options)=>path==='/api/status'?new Promise((resolve,reject)=>{resolveOld=resolve;rejectOld=reject}):options?.method==='POST'?{ok:true,rebooting:true}:undefined;
+    const oldRequest=h.ctx.status();assert.equal(h.state.statusLoading,true);
+    if(scope==='printer')await h.ctx.saveSettingsSection('printer');else await h.$('#saveSettings').onclick();
+    assert.equal(h.state.statusGeneration,1);assert.equal(h.state.statusUnavailable,true);assert.equal(h.state.savedConfig.accessCodeSet,true);
+    const savedAfterAck={...h.state.savedConfig};readinessCalls=0;
+    if(outcome==='success')resolveOld(oldConnected);else rejectOld(Error('Late pre-save timeout'));
+    await oldRequest;
+    assert.equal(paintCalls,0,'Pre-save status must not paint after acknowledgement');
+    assert.equal(freshnessCalls,0,'Pre-save errors must not repaint the pending save');
+    assert.equal(readinessCalls,0);assert.equal(h.state.statusUnavailable,true);assert.equal(h.state.status,previous);
+    assert.deepEqual({...h.state.savedConfig},savedAfterAck);assert.equal(h.state.statusLoading,false);
+    assert.equal(h.$('#refresh').disabled,false);assert.equal(h.$('#refresh').attributes['aria-busy'],'false');
+    assert.notEqual(h.$('#printerBadge').textContent,'✓ Connected');assert.equal(h.$('#savePrinter').disabled,true);
+    if(scope==='printer'){
+      assertPendingPrinter(h,'restart');
+      h.ctx.response=path=>path==='/api/health'?{bootId:101}:path==='/api/status'?{...oldConnected,bootId:101}:{...saved};
+      await h.ctx.checkSectionSave();assert.equal(h.state.sectionSave,null);assert.equal(h.state.statusUnavailable,false);
+      assert.equal(h.$('#printerBadge').textContent,'✓ Connected');
+    }else{assert.equal(h.state.config,null);assert.equal(h.state.fullSettingsSave,true)}
+  }
+});
 test('section saves send only that section, never unrelated draft Motor/Operation/Network values',()=>{
   const h=saveHarness(),f={...form,access:'TEST-ONLY',pass:'TEST-ONLY'};
   assert.deepEqual(JSON.parse(JSON.stringify(h.ctx.sectionSettingsPayload('network',f))),{ssid:'Workshop',wifiPassword:'TEST-ONLY'});
