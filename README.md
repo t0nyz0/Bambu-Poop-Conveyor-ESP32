@@ -52,7 +52,7 @@ Version 1.5.3 builds on the responsive v1.5 control center and MQTT status-light
 - Expanded first-party Home Assistant REST controls
 - Direct `/logs`, `/config`, and `/update` links now open the intended control-center tab
 
-The unpublished v1.5.4 candidate adds printer discovery and guided Settings. Its local Show/Hide controls can reveal saved credentials on explicit request; routine responses still omit them. Use that unauthenticated device interface only on a trusted network. See [candidate release notes](docs/release-notes-v1.5.4.md).
+The optional v1.5.4 Beta 1 adds printer discovery, guided Settings, and clearer connection status. Its local Show/Hide controls can reveal saved credentials on explicit request; routine responses still omit them. Use that unauthenticated device interface only on a trusted network. See [beta release notes](docs/release-notes-v1.5.4-beta.1.md). The public installer remains on stable v1.5.3.
 
 ### Web control center
 

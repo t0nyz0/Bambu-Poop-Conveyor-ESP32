@@ -47,6 +47,7 @@ static void servicePrinterDiscovery() {
 
 static void handlePrinterDiscoveryGet() {
     servicePrinterDiscovery();
+    rememberConfiguredPrinterName();
     DynamicJsonDocument doc(3072);
     doc["scanning"] = printerDiscoveryRunning;
     doc["remainingMs"] = printerDiscoveryRunning ? PRINTER_DISCOVERY_MS - (uint32_t)(millis() - printerDiscoveryStarted) : 0;

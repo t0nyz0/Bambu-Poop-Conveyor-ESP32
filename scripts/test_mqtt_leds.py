@@ -21,6 +21,7 @@ MOCKS = r'''
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include "mqtt_client_id.h"
 
 constexpr int LOW = 0, HIGH = 1;
 constexpr int greenLight = 1, yellowLight = 2, redLight = 3;
@@ -41,6 +42,7 @@ int pins[8] = {0, HIGH, LOW, LOW, LOW, LOW, LOW, LOW};
 int pinWrites = 0;
 char printer_model[] = "H2", mqtt_topic[128] = {}, serial_number[] = "test-printer";
 const char *mqtt_user = "test", *mqtt_password = "test";
+struct ESPMock { uint64_t id = 0x123456789ABC; uint64_t getEfuseMac() { return id; } } ESP;
 
 unsigned long millis() { return now; }
 void digitalWrite(int pin, int value) { pins[pin] = value; ++pinWrites; }
@@ -52,6 +54,7 @@ void addLogEntry(const std::string&) {}
 void publishPushAllMessage() {}
 void evaluateTriggerRules() {}
 void serviceScheduledRestart() {}
+void serviceIncompleteFirmwareUpload() {}
 void servicePrinterDiscovery() {} // The discovery service is tested separately.
 bool setupRequired = false;
 bool printerSetupRequired() { return setupRequired; } // Routing tested separately.
@@ -68,8 +71,10 @@ struct ClientMock {
     bool online = true, connectSucceeds = false;
     unsigned long connectDelay = 0;
     int attempts = 0, greenAtAttempt = -1, yellowAtAttempt = -1;
+    std::string clientId;
     bool connected() { return online; }
-    bool connect(const char*, const char*, const char*) {
+    bool connect(const char* id, const char*, const char*) {
+        clientId = id;
         ++attempts;
         greenAtAttempt = pins[greenLight];
         yellowAtAttempt = pins[yellowLight];
@@ -108,6 +113,17 @@ int main(int argc, char** argv) {
     if (argc != 2) return 2;
     const std::string test = argv[1];
     try {
+        if (test == "unique_client_identity") {
+            client.online = false; client.connectSucceeds = true; connectToMqtt();
+            const auto first = client.clientId;
+            check(first == "BambuConv123456789ABC" && first.size() <= 23, "client ID is bounded and derived from this ESP32");
+            client.online = false; connectToMqtt();
+            check(client.clientId == first, "reconnect uses the same client identity");
+            ESP.id = 0x123456789ABD; client.online = false; connectToMqtt();
+            check(client.clientId != first, "different conveyors cannot share the hard-coded identity");
+            char a[22], b[22]; buildMqttClientId(a, 1); buildMqttClientId(b, 0xFFFF000000000001ULL);
+            check(!strcmp(a, "BambuConv000000000001") && !strcmp(a,b), "full stable 48-bit identity is padded and bounded");
+        } else
         if (test == "incomplete_setup_skips_mqtt") {
             setupRequired = true;
             client.online = false;
@@ -249,7 +265,7 @@ TESTS = (
     "short_disconnect_recovery", "failed_reconnect", "waiting_reconnect",
     "waiting_failed_reconnect", "running_reconnect", "running_failed_reconnect",
     "normal_motor_cycle", "motion_motor_cycle", "motor_stops_while_disconnected",
-    "cooldown_reconnect", "ap_mode_untouched", "incomplete_setup_skips_mqtt",
+    "cooldown_reconnect", "ap_mode_untouched", "incomplete_setup_skips_mqtt", "unique_client_identity",
 )
 
 
@@ -274,6 +290,7 @@ def main() -> int:
         test_source.write_text(MOCKS + functions + SCENARIOS)
         subprocess.run([
             *shlex.split(os.environ.get("CXX", "c++")), "-std=c++17", "-Wall", "-Wextra",
+            "-I", str(Path(__file__).resolve().parents[1] / "Bambu-Poop-Conveyor"),
             str(test_source), "-o", str(executable),
         ], check=True)
         # A fresh process per scenario resets function-local static firmware state.

@@ -1,4 +1,6 @@
 #pragma once
+#include "printer_label.h"
+static void rememberConfiguredPrinterName();
 
 // v1.5 features live beside the original motor/LED state machine. Keeping this
 // layer separate makes it much harder for UI work to change proven hardware timing.
@@ -319,6 +321,9 @@ static void handleApiStatus() {
     JsonObject mqtt = doc.createNestedObject("mqtt");
     mqtt["connected"] = client.connected();
     JsonObject printer = doc.createNestedObject("printer");
+    printer["name"] = printerLabelFor(mqtt_server, serial_number);
+    printer["ip"] = mqtt_server;
+    printer["model"] = printer_model;
     printer["stage"] = effectivePrinterStage();
     printer["rawStage"] = printer_stage;
     printer["subStage"] = printer_sub_stage;
@@ -387,6 +392,8 @@ static void handleApiSecretReveal() {
 }
 
 static void handleApiConfigPost() {
+    if (restartScheduled || firmwareUploadStarted)
+        return sendError(409, "Wait for the firmware update or restart to finish");
     DynamicJsonDocument request(1536);
     DeserializationError error = deserializeJson(request, server.arg("plain"));
     if (error) return sendError(400, "Invalid settings data");
@@ -395,19 +402,20 @@ static void handleApiConfigPost() {
     String newPrinterIp = request["printerIp"] | String(mqtt_server);
     String newSerial = request["serialNumber"] | String(serial_number);
     String newModel = request["printerModel"] | String(printer_model);
+    String newPassword = request["wifiPassword"] | "";
+    String newAccessCode = request["accessCode"] | "";
     if (newSsid.length() > 49 || newPrinterIp.length() > 39 || newSerial.length() > 34 || newModel.length() > 4)
         return sendError(422, "One or more settings are too long");
     if (newMode != "mqtt" && newMode != "motion") return sendError(422, "Unknown operation mode");
+    if (newPassword.length() > 49 || newAccessCode.length() > 29) return sendError(422, "A password is too long");
 
+    // Reject invalid input before changing any live or persisted settings.
     bool rebootNeeded = newSsid != ssid || newMode != operationMode || newPrinterIp != mqtt_server || newSerial != serial_number;
     copyBounded(ssid, sizeof(ssid), newSsid);
     copyBounded(operationMode, sizeof(operationMode), newMode);
     copyBounded(mqtt_server, sizeof(mqtt_server), newPrinterIp);
     copyBounded(serial_number, sizeof(serial_number), newSerial);
     copyBounded(printer_model, sizeof(printer_model), newModel);
-    String newPassword = request["wifiPassword"] | "";
-    String newAccessCode = request["accessCode"] | "";
-    if (newPassword.length() > 49 || newAccessCode.length() > 29) return sendError(422, "A password is too long");
     if (newPassword.length()) { copyBounded(password, sizeof(password), newPassword); rebootNeeded = true; }
     if (newAccessCode.length()) { copyBounded(mqtt_password, sizeof(mqtt_password), newAccessCode); rebootNeeded = true; }
     useMotionSensor = newMode == "motion";
@@ -429,6 +437,7 @@ static void handleApiConfigPost() {
     preferences.putInt("delayAfterRun", delayAfterRun); preferences.putInt("motorDirection", motorDirection);
     preferences.putInt("dutyCycle", dutyCycle); preferences.putBool("debug", debug);
     preferences.end();
+    rememberConfiguredPrinterName();
     ledcWrite(enable1Pin, dutyCycle);
     StaticJsonDocument<160> response;
     response["ok"] = true; response["rebooting"] = rebootNeeded; response["rebootInMs"] = rebootNeeded ? 1800 : 0;
@@ -572,6 +581,9 @@ static void handleApiLogs() {
 }
 
 static void handleFirmwareUploadV150() {
+    // Never start or touch another upload while a successful save/update is
+    // awaiting restart. Its existing firmware result and deadline must survive.
+    if (restartScheduled) return;
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
         firmwareUploadStarted = true; firmwareUploadValid = true; firmwareUploadError = "";
@@ -587,10 +599,14 @@ static void handleFirmwareUploadV150() {
         if (!Update.end(true)) { firmwareUploadValid = false; firmwareUploadError = Update.errorString(); }
     } else if (upload.status == UPLOAD_FILE_ABORTED) {
         Update.abort(); firmwareUploadValid = false; firmwareUploadError = "Upload was cancelled";
+        // A disconnected multipart request skips the completion handler.
+        firmwareUploadStarted = false;
     }
 }
 
 static void handleFirmwareUploadCompleteV150() {
+    if (restartScheduled)
+        return sendError(409, "Wait for the pending restart before updating firmware");
     if (!firmwareUploadStarted || !firmwareUploadValid || Update.hasError()) {
         String message = firmwareUploadError.length() ? firmwareUploadError : "Firmware update failed";
         firmwareUploadStarted = false;
@@ -605,7 +621,40 @@ static void handleFirmwareUploadCompleteV150() {
     restartAt = millis() + 2500;
 }
 
+static void serviceIncompleteFirmwareUpload() {
+    // Some malformed multipart requests end without the upload-aborted or
+    // request-completion callbacks. Do not let their stale flag lock Settings.
+    if (!firmwareUploadStarted || restartScheduled || server.hasActiveRequest()) return;
+    Update.abort();
+    firmwareUploadValid = false;
+    firmwareUploadStarted = false;
+    firmwareUploadError = "The firmware upload did not finish; try uploading again";
+}
+
 #include "printer_discovery.h"
+
+static void loadPrinterLabel() {
+    preferences.begin("printer-label", true);
+    preferences.getString("name", "").toCharArray(printerLabel.name, sizeof(printerLabel.name));
+    preferences.getString("ip", "").toCharArray(printerLabel.ip, sizeof(printerLabel.ip));
+    preferences.getString("serial", "").toCharArray(printerLabel.serial, sizeof(printerLabel.serial));
+    preferences.end();
+}
+
+static void rememberConfiguredPrinterName() {
+    for (size_t i = 0; i < discoveredPrinterCount; ++i) {
+        const auto& p = discoveredPrinters[i];
+        if (strcmp(p.ip, mqtt_server) || strcmp(p.serial, serial_number)) continue;
+        if (updatePrinterLabel(p.name, p.ip, p.serial)) {
+            preferences.begin("printer-label", false);
+            preferences.putString("name", printerLabel.name);
+            preferences.putString("ip", printerLabel.ip);
+            preferences.putString("serial", printerLabel.serial);
+            preferences.end();
+        }
+        break;
+    }
+}
 
 static void registerV150Routes() {
     const char* settingsHeaders[] = {"Origin", "X-Conveyor-Settings"};

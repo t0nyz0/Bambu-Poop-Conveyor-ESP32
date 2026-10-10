@@ -41,12 +41,37 @@ test('motion mode does not require a printer; mode changes still need saving',()
   assert.equal(r.printer.badge,'Not needed');assert.equal(r.printerMissing.length,0);assert.equal(r.attention,false);
   assert.match(ready({}, {mode:'motion'}).summary,/Save settings/);
 });
-test('network setup distinguishes missing Wi-Fi name, disconnection, loading, and stale offline status',()=>{
+test('network setup distinguishes missing Wi-Fi name, confirmed disconnection, and loading',()=>{
   const disconnected={wifi:{connected:false}};
   assert.equal(ready({}, {ssid:''}, disconnected).network.badge,'! Setup needed');
   assert.equal(ready({}, {}, disconnected).network.badge,'! Not connected');
   assert.equal(ready({}, {}, null).network.kind,'neutral');
-  const r=ready({}, {}, live,true);assert.equal(r.network.badge,'! Device offline');assert.notEqual(r.printer.badge,'✓ Connected');
+});
+test('failed status refresh preserves last known Wi-Fi without inventing missing setup',()=>{
+  const r=ready({}, {}, live,true);
+  assert.equal(r.network.kind,'neutral');assert.equal(r.network.badge,'Last known: connected');
+  assert.match(r.network.help,/last successful check/);assert.match(r.network.help,/retrying automatically/);
+  assert.equal(r.networkMissing.length,0);assert.equal(r.attention,false);assert.equal(r.summaryKind,'neutral');
+  assert.match(r.summary,/temporarily unavailable/);assert.doesNotMatch(r.summary,/reconnect|setup needed/i);
+  assert.equal(r.printer.badge,'✓ Configured','Stale MQTT is not presented as a fresh live connection');
+});
+test('initial or repeated status failures stay unknown rather than asserting offline or disconnected',()=>{
+  for(const previous of [null,live,{wifi:{connected:false},mqtt:{connected:false}}]){
+    for(let attempt=0;attempt<3;attempt++){
+      const r=ready({}, {}, previous,true);
+      assert.equal(r.network.kind,'neutral');assert.equal(r.attention,false);
+      assert.doesNotMatch(r.network.badge,/offline|not connected|setup needed/i);
+      assert.match(r.summary,/retrying/);
+    }
+  }
+});
+test('unavailable status still highlights genuinely missing printer details and unsaved drafts',()=>{
+  const r=ready({accessCodeSet:false},{access:''},live,true);
+  assert.deepEqual(Array.from(r.printerMissing),['access']);assert.equal(r.printer.kind,'needs');
+  assert.equal(r.network.kind,'neutral');assert.equal(r.attention,true);assert.equal(r.summaryKind,'needs');
+  assert.equal(r.summary,'Complete Printer setup');
+  const draft=ready({}, {ssid:'New network'},live,true);
+  assert.equal(draft.attention,true);assert.match(draft.summary,/Save settings to apply your changes/);
 });
 test('unknown or missing printer model is highlighted without guessing',()=>{
   assert.deepEqual(Array.from(ready({}, {model:''}).printerMissing),['model']);
@@ -56,7 +81,7 @@ test('form rendering marks fields, never modifies their values, and uses text in
   const fields=new Map();const $=id=>{if(!fields.has(id))fields.set(id,{value:'',dataset:{},textContent:'',className:'',attributes:{},needs:false,closest(){return {classList:{toggle:(_,v)=>this.needs=v}}},setAttribute(k,v){this.attributes[k]=v},addEventListener(){}});return fields.get(id)};
   for(const [id,value] of Object.entries({mode:'mqtt',ssid:'Workshop',pass:'',printerIp:'',serial:'',access:'',model:'X1'}))$('#'+id).value=value;
   const state={config:{},savedConfig:{...saved,accessCodeSet:false},status:live};
-  const ctx=vm.createContext({$,state,secretInputValue:id=>$('#'+id).value,updateSecretHints:()=>{}});vm.runInContext(logic,ctx);ctx.updateSettingsStatus();
+  const ctx=vm.createContext({$,state,secretInputValue:id=>$('#'+id).value,updateSecretHints:()=>{},syncDownloadSource:()=>{}});vm.runInContext(logic,ctx);ctx.updateSettingsStatus();
   assert.equal($('#printerIp').needs,true);assert.equal($('#access').needs,true);assert.equal($('#ssid').needs,false);assert.equal($('#access').value,'');
   assert.equal($('#printerBadge').textContent,'! Setup needed');assert.equal($('#printerIp').attributes['aria-describedby'],'printerHelp');assert.equal($('#printerHelp').innerHTML,undefined);
 });
@@ -94,8 +119,8 @@ function saveHarness(){
   const $=key=>{if(!elements.has(key))elements.set(key,{value:'',dataset:{},className:'',textContent:'',attributes:{},setAttribute(k,v){this.attributes[k]=v}});return elements.get(key)};
   for(const [id,value] of Object.entries({ssid:'Workshop',pass:'TEST-ONLY',printerIp:'10.0.0.50',serial:'01PTEST',access:'TEST-ONLY',model:'P1'}))$('#'+id).value=value;
   const state={bootId:100,config:{...saved},savedConfig:{...saved}};
-  const ctx=vm.createContext({$,state,AbortSignal,secretInputValue:id=>$('#'+id).value,performance:{now:()=>ctx.now},now:0,updateSettingsStatus:()=>{},updateSecretHints:()=>{},paint:()=>{},setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length},api:async(path,options)=>{requests.push({path,options});return ctx.response(path,options)}});
-  vm.runInContext(['sectionSettingsPayload','sectionConnectionVerified','finishSectionSave','checkSectionSave','saveSettingsSection'].map(inline).join('\n'),ctx);
+  const ctx=vm.createContext({$,state,AbortSignal,secretInputValue:id=>$('#'+id).value,performance:{now:()=>ctx.now},now:0,updateSettingsStatus:()=>{},updateSecretHints:()=>{},paint:()=>{},setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length},clearTimeout(){},api:async(path,options)=>{requests.push({path,options});return ctx.response(path,options)}});
+  vm.runInContext(['setSecretVisibility','resetSavedSecret','sectionSettingsPayload','sectionConnectionVerified','finishSectionSave','checkSectionSave','saveSettingsSection'].map(inline).filter(Boolean).join('\n'),ctx);
   return {ctx,$,state,requests,timers};
 }
 test('section saves send only that section, never unrelated draft Motor/Operation/Network values',()=>{
@@ -128,8 +153,52 @@ test('printer connection timeout reports saved-but-not-connected and releases co
   h.ctx.now=61000;await h.ctx.checkSectionSave();assert.equal(h.state.sectionSave,null);assert.equal(h.$('#printerSaveStatus').className,'needs');assert.match(h.$('#printerSaveStatus').textContent,/saved, but MQTT did not connect/);
 });
 test('blank saved secrets keep Show available and give an explicit saved hint',()=>{
-  const elements=new Map();const $=key=>{if(!elements.has(key))elements.set(key,{value:'',dataset:{},textContent:'',closest(){return {appendChild:node=>elements.set('#'+node.id,node)}}});return elements.get(key)};
-  const ctx=vm.createContext({$,state:{savedConfig:{wifiPasswordSet:true,accessCodeSet:true}},document:{createElement:()=>({})}});vm.runInContext([inline('secretInputValue'),inline('updateSecretHints')].join('\n'),ctx);ctx.updateSecretHints();
+  const elements=new Map();const $=key=>{if(!elements.has(key))elements.set(key,{value:'',type:'password',dataset:{},textContent:'',setAttribute(k,v){this[k]=v},closest(){return {appendChild:node=>elements.set('#'+node.id,node)}}});return elements.get(key)};
+  const ctx=vm.createContext({$,state:{savedConfig:{wifiPasswordSet:true,accessCodeSet:true}},document:{createElement:()=>({})}});vm.runInContext([inline('secretInputValue'),inline('setSecretVisibility'),inline('updateSecretHints')].join('\n'),ctx);ctx.updateSecretHints();
   for(const id of ['pass','access']){assert.equal($('.secret-toggle[data-secret="'+id+'"]').disabled,false);assert.match($('#'+id+'SavedHint').textContent,/saved on device/);assert.equal($('#'+id).value,'')}
   $('#pass').value='TEST-ONLY';ctx.updateSecretHints();assert.equal($('.secret-toggle[data-secret="pass"]').disabled,false);assert.match($('#passSavedHint').textContent,/Replacement entered/);
+});
+
+function secretHarness(){
+  const elements=new Map(),requests=[],messages=[];
+  const $=key=>{if(!elements.has(key))elements.set(key,{value:'',type:'password',dataset:{},textContent:'Show',attributes:{},setAttribute(k,v){this.attributes[k]=v},closest(){return {appendChild:node=>elements.set('#'+node.id,node)}}});return elements.get(key)};
+  for(const id of ['pass','access'])$('.secret-toggle[data-secret="'+id+'"]').dataset.secret=id;
+  const state={savedConfig:{wifiPasswordSet:true,accessCodeSet:true}};
+  const ctx=vm.createContext({$,state,AbortSignal,document:{createElement:()=>({})},toast:m=>messages.push(m),api:async(...args)=>{requests.push(args);return ctx.response(...args)}});
+  vm.runInContext(['secretInputValue','setSecretVisibility','resetSavedSecret','toggleSecret','updateSecretHints'].map(inline).filter(Boolean).join('\n'),ctx);
+  return {ctx,$,state,requests,messages};
+}
+test('saving a visible code resets both the field and its Show button, then one click reveals it',async()=>{
+  const h=saveHarness();h.$('#access').type='text';h.$('.secret-toggle[data-secret="access"]').textContent='Hide';
+  h.ctx.response=()=>({ok:true,rebooting:true});await h.ctx.saveSettingsSection('printer');
+  assert.equal(h.$('#access').value,'');assert.equal(h.$('#access').type,'password');assert.equal(h.$('.secret-toggle[data-secret="access"]').textContent,'Show');
+  const s=secretHarness();s.ctx.response=()=>({value:'TEST-ONLY'});await s.ctx.toggleSecret(s.$('.secret-toggle[data-secret="access"]'));
+  assert.equal(s.$('#access').value,'TEST-ONLY');assert.equal(s.$('#access').type,'text');assert.equal(s.requests.length,1);assert.equal(s.ctx.secretInputValue('access'),'');
+});
+test('pending reveal stays disabled across status refreshes and ignores duplicate clicks',async()=>{
+  const h=secretHarness();let resolve;h.ctx.response=()=>new Promise(r=>resolve=r);
+  const b=h.$('.secret-toggle[data-secret="access"]'),pending=h.ctx.toggleSecret(b);h.ctx.updateSecretHints();
+  assert.equal(b.disabled,true);assert.equal(b.textContent,'Loading…');await h.ctx.toggleSecret(b);assert.equal(h.requests.length,1);
+  resolve({value:'TEST-ONLY'});await pending;assert.equal(b.disabled,false);assert.equal(b.textContent,'Hide');
+});
+test('a delayed reveal never overwrites text the user has entered',async()=>{
+  const h=secretHarness();let resolve;h.ctx.response=()=>new Promise(r=>resolve=r);
+  const pending=h.ctx.toggleSecret(h.$('.secret-toggle[data-secret="access"]'));h.$('#access').value='NEW-TEST-ONLY';
+  resolve({value:'OLD-TEST-ONLY'});await pending;assert.equal(h.$('#access').value,'NEW-TEST-ONLY');assert.equal(h.$('#access').dataset.savedSecret,undefined);
+});
+test('failed and empty reveals remain masked with Show available for a retry',async()=>{
+  for(const response of [()=>{throw Error('offline')},()=>({value:''})]){
+    const h=secretHarness();h.ctx.response=response;const b=h.$('.secret-toggle[data-secret="access"]');await h.ctx.toggleSecret(b);
+    assert.equal(h.$('#access').type,'password');assert.equal(b.textContent,'Show');assert.equal(b.disabled,false);assert.equal(h.$('#access').dataset.savedSecret,undefined);
+  }
+});
+test('save/check has stable stages, resets its button, and never enables reveal during restart',async()=>{
+  const h=saveHarness();let resolve;h.ctx.response=()=>new Promise(r=>resolve=r);
+  const pending=h.ctx.saveSettingsSection('printer');assert.equal(h.state.sectionSave.phase,'saving');
+  resolve({ok:true,rebooting:true});await pending;assert.equal(h.state.sectionSave.phase,'restart');
+  h.ctx.response=path=>path==='/api/health'?{bootId:101}:path==='/api/status'?{bootId:101,mode:'mqtt',wifi:{connected:true},mqtt:{connected:false}}:{...saved};
+  await h.ctx.checkSectionSave();assert.equal(h.state.sectionSave.phase,'checking');assert.match(h.$('#printerSaveStatus').textContent,/Connecting to printer/);
+  h.ctx.response=path=>path==='/api/health'?{bootId:101}:path==='/api/status'?{bootId:101,mode:'mqtt',wifi:{connected:true},mqtt:{connected:true}}:{...saved};
+  await h.ctx.checkSectionSave();assert.equal(h.state.sectionSave,null);
+  const s=secretHarness();s.state.sectionSave={scope:'printer',phase:'restart'};s.ctx.updateSecretHints();assert.equal(s.$('.secret-toggle[data-secret="access"]').disabled,true);
 });

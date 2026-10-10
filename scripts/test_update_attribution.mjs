@@ -18,11 +18,11 @@ function harness({status={version:'1.5.2',displayVersion:installed},privacy={},a
   const requests=[],uploads=[],messages=[],elements=new Map();
   const state={status,releases:{}};
   const $=key=>{if(!elements.has(key))elements.set(key,{value:'site',textContent:''});return elements.get(key)};
-  const ctx=vm.createContext({state,$,URL,File,Uint8Array,navigator:privacy,
+  const ctx=vm.createContext({state,$,URL,File,Uint8Array,AbortSignal,navigator:privacy,
     confirm:()=>accept,toast:(...a)=>messages.push(a),betaUnavailableReason:()=>'',
     resetUpdate:()=>{},setUpdateBusy:()=>{},step:()=>{},failUpdate:m=>messages.push(m),
     uploadFirmware:(file,rollback)=>uploads.push({file,rollback}),
-    fetch:async(url,options)=>{requests.push({url,options});return {ok:true,json:async()=>({version:'1.5.1',bin:'https://t0nyz.com/flasher/firmware/test.bin'}),headers:{get:()=>null},arrayBuffer:async()=>image.buffer}}
+    fetch:async(url,options)=>{requests.push({url,options});let read=false;return {ok:true,json:async()=>({version:'1.5.1',bin:'https://t0nyz.com/flasher/firmware/test.bin'}),headers:{get:()=>null},body:{getReader:()=>({read:async()=>read?{done:true}:(read=true,{done:false,value:image}),cancel:async()=>{},releaseLock(){}})}}}
   });
   vm.runInContext(functions,ctx);return {ctx,state,$,requests,uploads,messages};
 }
@@ -36,7 +36,8 @@ test('all three channel checks report the Update screen and installed beta, with
     assert.equal(parsed.searchParams.get('analytics_source'),'conveyor_update');
     assert.equal(parsed.searchParams.get('installed_version'),installed);
     assert.ok(parsed.searchParams.has('ts'));
-    assert.deepEqual({...r.options},{mode:'cors',cache:'no-store'});
+    const {signal,...options}=r.options;assert.ok(signal instanceof AbortSignal);
+    assert.deepEqual({...options},{mode:'cors',cache:'no-store'});
     assert.deepEqual([...parsed.searchParams.keys()].sort(),['analytics_source','installed_version','ts']);
   }
 });

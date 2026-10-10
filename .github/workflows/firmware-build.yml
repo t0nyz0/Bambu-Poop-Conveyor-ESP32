@@ -44,19 +44,24 @@ jobs:
       - name: Install PlatformIO Core
         run: python -m pip install --upgrade platformio
 
+      - name: Install firmware dependencies
+        run: pio pkg install
+
       - name: Verify embedded web interface
         run: |
           python scripts/generate_ui.py
           git diff --exit-code -- Bambu-Poop-Conveyor/generated_ui.h
 
       - name: Verify firmware release channels
-        run: node --test scripts/test_release_channels.mjs scripts/test_update_attribution.mjs scripts/test_printer_discovery_ui.mjs scripts/test_settings_readiness.mjs
+        run: node --test scripts/test_release_channels.mjs scripts/test_update_attribution.mjs scripts/test_printer_discovery_ui.mjs scripts/test_settings_readiness.mjs scripts/test_overview_status.mjs scripts/test_ui_guards.mjs
 
       - name: Verify startup routing and MQTT indicators
         run: |
           python scripts/test_startup_routing.py
           python scripts/test_mqtt_leds.py
           DISCOVERY_SANITIZE=1 python scripts/test_printer_discovery.py
+          python scripts/test_settings_transaction.py
+          python scripts/test_http_responsiveness.py
 
       - name: Build ESP32 firmware
         run: pio run

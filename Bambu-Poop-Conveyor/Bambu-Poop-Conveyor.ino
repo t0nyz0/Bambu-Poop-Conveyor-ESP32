@@ -3,10 +3,10 @@
 // 8/6/24 - TZ
 // Last updated: 10/9/26
 char version[10] = "1.5.4";
-const char displayVersion[] = "1.5.4";
+const char displayVersion[] = "1.5.4 Beta 1";
 
 #include <WiFi.h>
-#include <WebServer.h>
+#include "responsive_web_server.h"
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <Preferences.h>
@@ -17,6 +17,7 @@ const char displayVersion[] = "1.5.4";
 #include <ImprovWiFiLibrary.h>
 #include <time.h>
 #include "generated_ui.h"
+#include "mqtt_client_id.h"
 
 //---- SETTINGS YOU SHOULD ENTER --------------------------------------------------------------------------------------------------------------------------
 
@@ -126,7 +127,7 @@ String printerPrintType = "";
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 Preferences preferences;
-WebServer server(80);
+ResponsiveWebServer server(80);
 ImprovWiFi improvSerial(&Serial);
 
 const char* DEVICE_HOSTNAME = "BambuConveyor-ESP32";
@@ -805,7 +806,9 @@ void connectToMqtt() {
             Serial.print("Connecting to MQTT...");
             addLogEntry("Connecting to MQTT...");
         }
-        if (client.connect("BambuConveyor", mqtt_user, mqtt_password)) {
+        char mqttClientId[22];
+        buildMqttClientId(mqttClientId, ESP.getEfuseMac());
+        if (client.connect(mqttClientId, mqtt_user, mqtt_password)) {
             Serial.println("Connected to Bambu printer");
             addLogEntry("Connected to Bambu printer");
             sprintf(mqtt_topic, "device/%s/report", serial_number);
@@ -920,6 +923,7 @@ void setup() {
     preferences.end();
 
     loadTriggerRules();
+    loadPrinterLabel();
     activeMotorWaitTime = motorWaitTime;
     activeMotorRunTime = motorRunTime;
     activeDelayAfterRun = delayAfterRun;
@@ -1036,6 +1040,7 @@ bool mqttReconnecting = false;
 void loop() {
     improvSerial.handleSerial();
     server.handleClient();
+    serviceIncompleteFirmwareUpload();
     dnsServer.processNextRequest();  // Handle captive portal redirects
     serviceScheduledRestart();
     servicePrinterDiscovery();

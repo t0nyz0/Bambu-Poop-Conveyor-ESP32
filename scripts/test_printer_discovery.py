@@ -15,6 +15,7 @@ MOCKS = r'''
 #include <string>
 #include <vector>
 #include "printer_discovery_parser.h"
+#include "printer_label.h"
 struct IPAddress {
     uint8_t bytes[4];
     IPAddress(uint8_t a=0,uint8_t b=0,uint8_t c=0,uint8_t d=0): bytes{a,b,c,d} {}
@@ -52,6 +53,12 @@ TESTS = r'''
 int main() {
     std::cout << std::unitbuf;
     DiscoveredPrinter p;
+    check(!printerLabelFor("10.0.0.50", "01PTEST")[0],"older configuration with no name is supported");
+    check(updatePrinterLabel("Workshop H2D", "10.0.0.50", "01PTEST"),"discovered label stored separately from connection settings");
+    check(!strcmp(printerLabelFor("10.0.0.50", "01PTEST"), "Workshop H2D"),"label shown only for matching IP and serial");
+    check(!printerLabelFor("10.0.0.51", "01PTEST")[0] && !printerLabelFor("10.0.0.50", "OTHER")[0],"old name hidden after target changes including older firmware saves");
+    check(!updatePrinterLabel("Workshop H2D", "10.0.0.50", "01PTEST"),"identical announcements never cause repeated flash writes");
+    check(!updatePrinterLabel(std::string(64,'X').c_str(), "10.0.0.50", "01PTEST"),"oversized labels rejected without overwriting the existing name");
     check(!printerDiscoveryHasRun&&!printerDiscoveryRunning,"discovery does not run in background at startup");
     check(parse(message(),p)&&!strcmp(p.model,"P1")&&!strcmp(p.ip,"10.0.0.50"),"real NOTIFY shape and P1S mapping");
     auto response=message();response.replace(0,17,"HTTP/1.1 200 OK");response.replace(response.find("NT:"),3,"ST:");
