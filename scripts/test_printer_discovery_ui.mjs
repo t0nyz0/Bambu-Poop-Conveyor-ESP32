@@ -3,21 +3,145 @@ import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import vm from 'node:vm';
 const html=readFileSync(new URL('../web/index.html',import.meta.url),'utf8');
-const names=['renderPrinterDiscovery','finishPrinterDiscovery','pollPrinterDiscovery','startPrinterDiscovery','useDiscoveredPrinter','loadConfig','setSecretVisibility','toggleSecret','secretInputValue'];
+const names=['loadConfig','setSecretVisibility','toggleSecret','secretInputValue'];
 const functions=names.map(name=>html.split('\n').find(line=>line.startsWith('function '+name+'(')||line.startsWith('async function '+name+'('))).join('\n');
+const settingsLogic=html.slice(html.indexOf('function settingsReadiness('),html.indexOf('function renderPrinterDiscovery('));
+const discoveryLogic=html.slice(html.indexOf('function renderPrinterDiscovery('),html.indexOf("$('#findPrinter').onclick="));
 function harness(){
   const elements=new Map(),requests=[],timers=[],prompts=[],messages=[];
-  const $=selector=>{if(!elements.has(selector))elements.set(selector,{value:'',dataset:{},textContent:'',hidden:true,disabled:false,attributes:{},setAttribute(k,v){this.attributes[k]=v},children:[],options:[],replaceChildren(){this.children=[];this.value=''},appendChild(o){this.children.push(o);if(!this.value)this.value=o.value}});return elements.get(selector)};
+  const $=selector=>{if(!elements.has(selector))elements.set(selector,{value:'',dataset:{},textContent:'',className:'',hidden:true,disabled:false,needs:false,attributes:{},setAttribute(k,v){this.attributes[k]=v},addEventListener(){},closest(){return {classList:{toggle:(_,v)=>this.needs=v}}},children:[],options:[],replaceChildren(){this.children=[];this.value=''},appendChild(o){this.children.push(o);if(!this.value)this.value=o.value}});return elements.get(selector)};
   $('#model').options=['X1','P1','A1','H2','P2'].map(value=>({value}));$('#model').value='X1';
   const discovery={attempted:false,busy:false,printers:[],timer:null};
   const state={config:null};
   const ctx=vm.createContext({$,discovery,state,document:{createElement:()=>({})},setTimeout:fn=>{timers.push(fn);return timers.length},clearTimeout:()=>{},AbortSignal,
     toast:(...x)=>messages.push(x),confirm:text=>{prompts.push(text);return ctx.approve},approve:true,
-    fillConfig:()=>{},updateSettingsStatus:()=>{},updateSecretHints:()=>{},api:async(path,options)=>{requests.push({path,options});if(ctx.fail)throw Error('Offline');return ctx.response}});
-  vm.runInContext(functions,ctx);
+    fillConfig:()=>{},syncDownloadSource:()=>{},updateSecretHints:()=>{},api:async(path,options)=>{requests.push({path,options});if(ctx.fail)throw Error(ctx.failMessage||'Offline');return ctx.response}});
+  vm.runInContext(settingsLogic+'\n'+discoveryLogic+'\n'+functions,ctx);
   return {ctx,$,discovery,state,requests,timers,prompts,messages};
 }
 const printer={ip:'10.0.0.50',serial:'01PTEST123',model:'P1',name:'Workshop'};
+function unconfiguredSettings(h){
+  const saved={operationMode:'mqtt',ssid:'Workshop Wi-Fi',printerIp:'',serialNumber:'',printerModel:'X1',accessCodeSet:false};
+  h.state.config={...saved};h.state.savedConfig={...saved};h.state.status={wifi:{connected:true},mqtt:{connected:false}};
+  for(const [id,value] of Object.entries({mode:'mqtt',ssid:saved.ssid,pass:'',printerIp:'',serial:'',access:'',model:'X1'}))h.$('#'+id).value=value;
+  h.ctx.updateSettingsStatus();return saved;
+}
+test('a printer found during the active scan immediately gets a green success panel and its own ongoing-search status',async()=>{
+  const h=harness(),saved=unconfiguredSettings(h);
+  h.ctx.response={scanning:true,remainingMs:18000,printers:[printer]};
+  await h.ctx.startPrinterDiscovery();
+  assert.equal(h.$('#discoveryFound').hidden,false);
+  assert.equal(h.$('#printerDiscovery').className,'note printer-discovery has-results');
+  assert.equal(h.$('#discoveryFoundTitle').textContent,'Printer found on your network');
+  assert.equal(h.$('#discoveryFoundName').textContent,printer.name);
+  assert.match(h.$('#discoveryStatus').textContent,/Still looking for other printers.*18s remaining/);
+  assert.equal(h.$('#findPrinter').disabled,true);assert.equal(h.discovery.busy,true);
+  assert.equal(h.$('#printerIp').value,'');assert.equal(h.$('#serial').value,'');assert.equal(h.$('#access').value,'');
+  assert.deepEqual(h.state.savedConfig,saved);
+  assert.equal(h.requests.length,1);assert.equal(h.requests[0].path,'/api/printer-discovery');
+});
+test('discovery success shows the current count, all found names and fallback labels without waiting for scan completion',()=>{
+  const h=harness(),second={...printer,ip:'10.0.0.51',serial:'00MTEST456',name:''};
+  assert.equal(h.ctx.renderPrinterDiscovery({scanning:true,remainingMs:9000,printers:[printer,second]}),true);
+  assert.equal(h.$('#discoveryFoundTitle').textContent,'2 printers found on your network');
+  assert.equal(h.$('#discoveryFoundName').textContent,'Workshop · Bambu printer');
+  assert.equal(h.ctx.renderPrinterDiscovery({scanning:false,printers:[printer,second]}),false);
+  h.ctx.finishPrinterDiscovery();
+  assert.equal(h.$('#findPrinter').textContent,'Search again');assert.equal(h.$('#findPrinter').disabled,false);
+  assert.equal(h.$('#discoveryFound').hidden,false);assert.match(h.$('#discoveryStatus').textContent,/Choose yours/);
+  const many=Array.from({length:12},(_,i)=>({...printer,serial:'TEST'+i,name:'Printer '+i}));
+  h.ctx.renderPrinterDiscovery({scanning:true,printers:many});
+  assert.equal(h.$('#discoveryFoundTitle').textContent,'8 printers found on your network');
+  assert.equal(h.$('#discoveryFoundName').textContent.split(' · ').length,8);
+  assert.equal(h.$('#discoveredPrinter').children.length,8);
+});
+test('found is not connected: a missing access code keeps Printer amber and Save blocked even after selecting a result',()=>{
+  const h=harness(),saved=unconfiguredSettings(h);
+  h.ctx.renderPrinterDiscovery({scanning:true,printers:[printer]});
+  assert.match(h.$('#printerSettings').className,/needs/);assert.equal(h.$('#printerBadge').textContent,'! Setup needed');
+  h.ctx.useDiscoveredPrinter();
+  assert.equal(h.$('#printerIp').value,printer.ip);assert.equal(h.$('#serial').value,printer.serial);
+  assert.equal(h.$('#access').value,'');assert.equal(h.$('#access').needs,true);
+  assert.match(h.$('#printerHelp').textContent,/access code/);assert.match(h.$('#printerSettings').className,/needs/);
+  assert.equal(h.$('#printerBadge').textContent,'! Setup needed');assert.equal(h.$('#saveSettings').disabled,true);
+  assert.equal(h.$('#savePrinter').disabled,true);assert.equal(h.$('#discoveryFound').hidden,false);
+  assert.doesNotMatch(h.$('#discoveryFoundTitle').textContent,/connected/i);
+  assert.deepEqual(h.state.savedConfig,saved);assert.equal(h.requests.length,0);
+});
+test('an empty ongoing or completed search never paints a discovery success panel',()=>{
+  const h=harness();
+  h.ctx.renderPrinterDiscovery({scanning:true,remainingMs:20000,printers:[]});
+  assert.equal(h.$('#discoveryFound').hidden,true);assert.equal(h.$('#discoveryResults').hidden,true);
+  assert.doesNotMatch(h.$('#printerDiscovery').className,/has-results/);
+  assert.match(h.$('#discoveryStatus').textContent,/Searching this Wi-Fi network.*20s remaining/);
+  h.ctx.renderPrinterDiscovery({scanning:false,printers:[]});h.ctx.finishPrinterDiscovery();
+  assert.equal(h.$('#discoveryFound').hidden,true);assert.match(h.$('#discoveryStatus').textContent,/No printer announcements/);
+  assert.equal(h.$('#findPrinter').textContent,'Find printer');assert.equal(h.$('#findPrinter').disabled,false);
+});
+test('a rejected retry preserves usable previous results, explicitly labels them, and leaves entered settings unchanged',async()=>{
+  const h=harness();h.ctx.response={scanning:false,printers:[printer]};await h.ctx.startPrinterDiscovery();
+  assert.equal(h.$('#discoveryFound').hidden,false);
+  const fields={printerIp:'10.0.0.70',serial:'MANUAL',access:'TEST-ONLY',pass:'TEST-ONLY'};
+  for(const [id,value] of Object.entries(fields))h.$('#'+id).value=value;
+  h.ctx.fail=true;h.ctx.failMessage='429: Please wait before searching again';const failed=h.ctx.startPrinterDiscovery();
+  assert.equal(h.$('#discoveryFound').hidden,false);assert.equal(h.$('#discoveryResults').hidden,false);
+  assert.match(h.$('#printerDiscovery').className,/has-results/);
+  assert.equal(h.$('#discoveredPrinter').children.length,1);assert.equal(h.discovery.printers.length,1);
+  await failed;
+  assert.equal(h.$('#findPrinter').disabled,false);assert.equal(h.discovery.busy,false);
+  assert.equal(h.$('#discoveryFoundName').textContent,printer.name);assert.equal(h.$('#findPrinter').textContent,'Search again');
+  assert.match(h.$('#discoveryStatus').textContent,/Search unavailable.*429.*Previous results are still shown.*manually/);
+  for(const [id,value] of Object.entries(fields))assert.equal(h.$('#'+id).value,value);
+  h.ctx.fail=false;h.ctx.response={scanning:false,printers:[printer]};await h.ctx.startPrinterDiscovery();
+  assert.equal(h.$('#discoveryFound').hidden,false);assert.equal(h.$('#findPrinter').textContent,'Search again');
+  assert.ok(h.requests.every(request=>request.path==='/api/printer-discovery'));
+});
+test('an accepted new scan clears previous discovery results without clearing entered configuration',async()=>{
+  const h=harness();h.ctx.response={scanning:false,printers:[printer]};await h.ctx.startPrinterDiscovery();
+  const fields={printerIp:'10.0.0.70',serial:'MANUAL',access:'TEST-ONLY',pass:'TEST-ONLY'};
+  for(const [id,value] of Object.entries(fields))h.$('#'+id).value=value;
+  h.ctx.response={scanning:true,remainingMs:20000,printers:[]};const restarting=h.ctx.startPrinterDiscovery();
+  assert.equal(h.$('#discoveryFound').hidden,false);assert.equal(h.$('#discoveryFoundName').textContent,printer.name);
+  await restarting;
+  assert.equal(h.$('#discoveryFound').hidden,true);assert.equal(h.$('#discoveryResults').hidden,true);
+  assert.doesNotMatch(h.$('#printerDiscovery').className,/has-results/);
+  assert.equal(h.$('#discoveredPrinter').children.length,0);assert.equal(h.discovery.printers.length,0);
+  assert.equal(h.$('#discoveryFoundName').textContent,'');assert.equal(h.discovery.busy,true);
+  assert.match(h.$('#discoveryStatus').textContent,/Searching this Wi-Fi network.*20s remaining/);
+  assert.doesNotMatch(h.$('#discoveryStatus').textContent,/Previous results/);
+  for(const [id,value] of Object.entries(fields))assert.equal(h.$('#'+id).value,value);
+  h.ctx.response={scanning:false,printers:[]};await h.ctx.pollPrinterDiscovery();
+  assert.equal(h.$('#discoveryFound').hidden,true);assert.equal(h.$('#findPrinter').disabled,false);
+  assert.equal(h.$('#findPrinter').textContent,'Find printer');
+  assert.ok(h.requests.every(request=>request.path==='/api/printer-discovery'));
+});
+test('a polling error keeps genuinely found results distinct from the error and never claims connection success',async()=>{
+  const h=harness();unconfiguredSettings(h);h.ctx.response={scanning:true,remainingMs:5000,printers:[printer]};
+  await h.ctx.startPrinterDiscovery();h.ctx.fail=true;await h.ctx.pollPrinterDiscovery();
+  assert.equal(h.$('#discoveryFound').hidden,false);assert.equal(h.$('#discoveryFoundName').textContent,printer.name);
+  assert.match(h.$('#discoveryStatus').textContent,/Search unavailable/);assert.equal(h.$('#findPrinter').disabled,false);
+  assert.equal(h.$('#printerBadge').textContent,'! Setup needed');assert.equal(h.$('#saveSettings').disabled,true);
+  assert.equal(h.$('#printerIp').value,'');assert.equal(h.$('#serial').value,'');
+});
+test('success names use safe text and unchanged results do not repeatedly announce the same success text',()=>{
+  const h=harness(),writes={title:0,name:0};
+  for(const [id,key] of [['discoveryFoundTitle','title'],['discoveryFoundName','name']]){
+    let value=h.$('#'+id).textContent;
+    Object.defineProperty(h.$('#'+id),'textContent',{get:()=>value,set:next=>{value=next;writes[key]++},configurable:true});
+  }
+  const unsafe={...printer,name:'<img onerror=alert(1)> & Workshop'};
+  for(let i=0;i<4;i++)h.ctx.renderPrinterDiscovery({scanning:i<3,remainingMs:1000*(4-i),printers:[unsafe]});
+  assert.equal(h.$('#discoveryFoundName').textContent,unsafe.name);assert.equal(h.$('#discoveryFoundName').innerHTML,undefined);
+  assert.deepEqual(writes,{title:1,name:1});
+});
+test('discovery success is accessible, visibly green and hidden correctly at narrow widths, with a primary manual-selection action',()=>{
+  assert.match(html,/<div class="discovery-found" id="discoveryFound" role="status" aria-live="polite" aria-atomic="true" hidden>/);
+  assert.match(html,/\.discovery-found\[hidden\]\{display:none\}/);
+  assert.match(html,/\.printer-discovery\.has-results\{/);
+  assert.match(html,/\.discovery-found-title\{color:var\(--green\)/);
+  assert.match(html,/<button class="btn primary" id="usePrinter">Use selected printer<\/button>/);
+  assert.match(html,/id="discoveryStatus" role="status" aria-live="polite"/);
+});
 test('search is local, bounded and never posts configuration',async()=>{const h=harness();h.ctx.response={scanning:true,remainingMs:20000,printers:[]};await h.ctx.startPrinterDiscovery();await h.ctx.startPrinterDiscovery();assert.equal(h.requests.length,1);assert.equal(h.requests[0].path,'/api/printer-discovery');assert.equal(h.requests[0].options.body,'{}');assert.equal(h.$('#findPrinter').disabled,true);assert.equal(h.discovery.attempted,true);assert.equal(h.timers.length,1);h.ctx.response={scanning:false,printers:[]};await h.ctx.pollPrinterDiscovery();assert.equal(h.$('#findPrinter').disabled,false);assert.match(h.$('#discoveryStatus').textContent,/No printer announcements/);assert.ok(h.requests.every(r=>r.path==='/api/printer-discovery'))});
 test('finding printers alone never fills or saves any fields',()=>{const h=harness();h.ctx.renderPrinterDiscovery({scanning:false,printers:[printer,{...printer,serial:'00MTEST456',ip:'10.0.0.51',model:'X1'}]});assert.equal(h.$('#printerIp').value,'');assert.equal(h.$('#serial').value,'');assert.equal(h.requests.length,0);assert.equal(h.$('#discoveredPrinter').children.length,2);assert.equal(h.$('#discoveryResults').hidden,false)});
 test('selection fills IP/serial/model but not passwords and never saves',()=>{const h=harness();h.$('#access').value='existing-input';h.$('#pass').value='existing-input';h.state.config={};h.ctx.renderPrinterDiscovery({printers:[printer]});h.ctx.useDiscoveredPrinter();assert.equal(h.$('#printerIp').value,printer.ip);assert.equal(h.$('#serial').value,printer.serial);assert.equal(h.$('#model').value,'P1');assert.equal(h.$('#access').value,'existing-input');assert.equal(h.$('#pass').value,'existing-input');assert.equal(h.requests.length,0);assert.match(h.messages[0][0],/not saved/)});

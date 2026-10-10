@@ -1,0 +1,10 @@
+{
+  "version": "1.5.4",
+  "channel": "beta",
+  "available": true,
+  "label": "v1.5.4 Beta 2",
+  "bin": "firmware/Bambu-Poop-Conveyor-v1.5.4-beta.2-ota.bin",
+  "manifest": "manifest-v1.5.4-beta.2.json",
+  "githubBin": "https://raw.githubusercontent.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/v1.5.4-beta.2/firmware/releases/v1.5.4-beta.2/Bambu-Poop-Conveyor-v1.5.4-beta.2-ota.bin",
+  "sha256": "54a4f8c573d1c8ce7f6ec79eded8bd0004bc8a2aeb3e99e38d4cdc2c901f628a"
+}

@@ -1,9 +1,9 @@
 #include <Arduino.h>
 // Bambu Poop Conveyor
 // 8/6/24 - TZ
-// Last updated: 10/9/26
+// Last updated: 10/10/26
 char version[10] = "1.5.4";
-const char displayVersion[] = "1.5.4 Beta 1";
+const char displayVersion[] = "1.5.4 Beta 2";
 
 #include <WiFi.h>
 #include "responsive_web_server.h"
