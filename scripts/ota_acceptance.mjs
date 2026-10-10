@@ -15,7 +15,8 @@ const get=async path=>{const r=await fetch(base+path,{signal:AbortSignal.timeout
 const health=await get('/api/health'),status=await get('/api/status');
 assert.equal(status.motor.state,'Idle','Do not update while the conveyor is moving/waiting');
 assert.equal(status.motor.running,false);
-const configHash=digest(stableJSON(await get('/api/config')));
+const beforeConfig=await get('/api/config');
+const configHash=digest(stableJSON(beforeConfig));
 const triggersHash=digest(stableJSON(await get('/api/triggers')));
 const bytes=await readFile(file);
 assert.equal(bytes[0],0xe9);assert.ok(bytes.length>=65536 && bytes.length<=1310720);
@@ -46,8 +47,11 @@ assert.equal(digest(stableJSON(await get('/api/triggers'))),triggersHash,'Trigge
 const after=await get('/api/status');assert.equal(after.wifi.connected,true);assert.equal(after.motor.state,'Idle');
 const root=await fetch(base+'/',{redirect:'manual',signal:AbortSignal.timeout(10000)});
 const isPreviousStable=label==='1.5.1';
-assert.equal(root.status,isPreviousStable?200:302);
-if(!isPreviousStable)assert.equal(root.headers.get('location'),'/config','This printer-unconfigured test board should open Settings');
+const filled=(value,placeholder)=>typeof value==='string'&&value.trim()&&value.trim()!==placeholder;
+const needsSetup=!isPreviousStable&&(status.wifi.connected!==true||(beforeConfig.operationMode!=='motion'&&
+  (!filled(beforeConfig.printerIp,'your-bambu-printer-ip')||!filled(beforeConfig.serialNumber,'your-bambu-printer-serial-number')||!beforeConfig.accessCodeSet)));
+assert.equal(root.status,needsSetup?302:200);
+if(needsSetup)assert.equal(root.headers.get('location'),'/config','Incomplete saved setup should open Settings');
 let expectedUI=await readFile(new URL('../web/index.html',import.meta.url),'utf8');
 if(isPreviousStable){const r=await fetch('https://raw.githubusercontent.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/Release-v1.5.1/web/index.html');assert.equal(r.status,200);expectedUI=await r.text()}
 for(const route of ['/config','/control','/logs','/update']){
@@ -56,4 +60,4 @@ for(const route of ['/config','/control','/logs','/update']){
 }
 await get('/api/logs');await get('/status');
 console.log(JSON.stringify({result:'PASS',displayVersion:returned.displayVersion,oldBoot:health.bootId,newBoot:returned.bootId,
-  configurationPreserved:true,triggersPreserved:true,wifiConnected:true,motor:'Idle',defaultRoute:isPreviousStable?'/':'/config',otaSha256:digest(bytes)}));
+  configurationPreserved:true,triggersPreserved:true,wifiConnected:true,motor:'Idle',defaultRoute:needsSetup?'/config':'/',otaSha256:digest(bytes)}));

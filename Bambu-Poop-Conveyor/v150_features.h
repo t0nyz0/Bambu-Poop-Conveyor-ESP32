@@ -305,6 +305,7 @@ static void handleApiStatus() {
     doc["ip"] = isAPMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
     doc["uptimeMs"] = millis();
     doc["mode"] = operationMode;
+    doc["setupRequired"] = isAPMode || printerSetupRequired();
     JsonObject wifi = doc.createNestedObject("wifi");
     wifi["connected"] = WiFi.status() == WL_CONNECTED;
     wifi["ssid"] = isAPMode ? "BambuConveyor" : String(ssid);
@@ -346,7 +347,9 @@ static void handleApiConfigGet() {
     doc["ssid"] = ssid;
     doc["wifiPasswordSet"] = strlen(password) > 0;
     doc["printerIp"] = mqtt_server;
-    doc["accessCodeSet"] = strlen(mqtt_password) > 0;
+    String savedAccessCode(mqtt_password);
+    savedAccessCode.trim();
+    doc["accessCodeSet"] = savedAccessCode.length() > 0 && savedAccessCode != "your-bambu-printer-accesscode";
     doc["serialNumber"] = serial_number;
     doc["printerModel"] = printer_model;
     doc["debug"] = debug;
@@ -357,6 +360,30 @@ static void handleApiConfigGet() {
     motor["speed"] = dutyCycle;
     motor["direction"] = motorDirection;
     sendJson(200, doc);
+}
+
+static void handleApiSecretReveal() {
+    // Explicit local UI action only. This is not authentication: trust the LAN.
+    String host = server.hostHeader();
+    String normalizedHost = host;
+    normalizedHost.toLowerCase();
+    if (normalizedHost.endsWith(":80")) normalizedHost.remove(normalizedHost.length() - 3);
+    String mdnsHost = String(DEVICE_MDNS) + ".local";
+    mdnsHost.toLowerCase();
+    if (normalizedHost != WiFi.localIP().toString() && normalizedHost != WiFi.softAPIP().toString() && normalizedHost != mdnsHost)
+        return sendError(403, "Open the device's local address to view saved credentials");
+    if (server.header("X-Conveyor-Settings") != "reveal" ||
+        (server.hasHeader("Origin") && server.header("Origin") != "http://" + host))
+        return sendError(403, "Use Show in the device Settings page");
+    if (server.arg("plain").length() > 64) return sendError(400, "Unknown credential field");
+    StaticJsonDocument<128> request;
+    if (deserializeJson(request, server.arg("plain"))) return sendError(400, "Invalid request");
+    String field = request["field"] | "";
+    if (field != "wifiPassword" && field != "accessCode") return sendError(400, "Unknown credential field");
+    StaticJsonDocument<192> response;
+    response["ok"] = true;
+    response["value"] = field == "wifiPassword" ? password : mqtt_password;
+    sendJson(200, response);
 }
 
 static void handleApiConfigPost() {
@@ -581,6 +608,8 @@ static void handleFirmwareUploadCompleteV150() {
 #include "printer_discovery.h"
 
 static void registerV150Routes() {
+    const char* settingsHeaders[] = {"Origin", "X-Conveyor-Settings"};
+    server.collectHeaders(settingsHeaders, 2);
     server.on("/", HTTP_GET, serveDefaultWebUi);
     server.on("/config", HTTP_GET, serveWebUi);
     server.on("/control", HTTP_GET, serveWebUi);
@@ -590,6 +619,7 @@ static void registerV150Routes() {
     server.on("/api/status", HTTP_GET, handleApiStatus);
     server.on("/api/config", HTTP_GET, handleApiConfigGet);
     server.on("/api/config", HTTP_POST, handleApiConfigPost);
+    server.on("/api/config/reveal", HTTP_POST, handleApiSecretReveal);
     server.on("/api/printer-discovery", HTTP_GET, handlePrinterDiscoveryGet);
     server.on("/api/printer-discovery", HTTP_POST, handlePrinterDiscoveryPost);
     server.on("/api/triggers", HTTP_GET, handleApiTriggersGet);

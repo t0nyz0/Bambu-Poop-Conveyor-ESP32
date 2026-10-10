@@ -5,15 +5,16 @@ Tested October 9, 2026. This is an unpublished candidate; owner approval is requ
 ## Scope
 
 - Bounded local printer discovery and first-time Settings search.
-- Separate Network and Printer sections; Show/Hide for credentials entered in the form.
+- Separate Network and Printer sections; explicit Show/Hide for saved or newly entered credentials on the trusted local device.
+- Section readiness, separate Wi-Fi and printer saves, required-printer validation for global Save, and an incomplete-setup reminder in navigation and Overview.
 - Incomplete printer setup skips MQTT connection attempts so setup remains responsive.
 - Existing configuration format, credentials, motor timing, triggers, configured MQTT operation, LEDs, provisioning, and previous-stable recovery remain unchanged.
 
 ## Automated validation
 
-- ESP32 PlatformIO build passed. Application image: 1,192,992 bytes, below the 1,310,720-byte OTA partition limit. Static RAM: 59,620 bytes.
+- ESP32 PlatformIO build passed. Application image: 1,199,552 bytes, below the 1,310,720-byte OTA partition limit. Static RAM: 59,620 bytes.
 - Discovery parser/service: 57 checks passed, including malformed datagrams, source/subnet checks, duplicate handling, eight-result limit, per-loop packet limit, timeout/wraparound, and listener shutdown.
-- UI and release/update regression tests: 38 passed, including selection without saving, unknown-model fallback, safe text rendering, first-time-only automatic search, preserved form values, separate cards, and Show/Hide without requests.
+- UI and release/update regression tests: 59 passed, including selection without saving, safe text rendering, readiness states, saved-code and motion-mode exceptions, an independently guarded global Save handler, partial section payloads, real-connection verification after reboot, error/timeout handling, and saved-value reveal without resubmission. Typed-value Show/Hide needs no request; saved-value Show explicitly requests only that field.
 - Startup routing: 15 checks passed.
 - MQTT/indicator/motor host simulation: 15 scenarios passed, including all 14 existing scenarios and incomplete setup skipping connection attempts.
 - UI generation repeated successfully and `git diff --check` passed.
@@ -24,17 +25,19 @@ Tested October 9, 2026. This is an unpublished candidate; owner approval is requ
 - OTA installation of the final candidate passed without erasing settings or disconnecting the computer from Wi-Fi.
 - Reboot/version, saved configuration and trigger fingerprints, Wi-Fi connectivity, idle motor state, UI routes, status, and logs were verified.
 - A real H2D on the same network was discovered. Selecting a result fills IP, serial, and model without saving settings or retrieving credentials.
-- An initial candidate reproduced a setup-page timeout. The final build skips MQTT connection attempts while printer setup is incomplete. The final acceptance run passed 12 repeated health/status/discovery samples with no reboot, no settings change, and a maximum health response time of 301 ms.
+- An initial candidate reproduced a setup-page timeout. Later builds skip MQTT connection attempts while printer setup is incomplete. The readiness/reveal build passed 12 repeated health/status/discovery samples with a maximum health response time of 430 ms. The final save-validation/navigation build passed another 12 samples with no reboot or settings change and a maximum health response time of 819 ms while browser checks ran concurrently. A real printer was found and search auto-stop/repeat-start bounds passed again.
 - Repeated search-start requests did not extend the active search; the search stopped automatically after 20 seconds.
-- Both Show/Hide controls were exercised in the device browser using unsaved dummy input, then cleared and returned to masked mode. Settings retains its plain headline; Network and Printer are separate cards.
-- Desktop screenshot of the final device UI was saved locally. Earlier 390/1280-pixel overflow checks passed on the initial candidate. Repeating viewport overrides on the final UI was blocked by browser-control timeouts, so final mobile visual acceptance is still pending; the hidden-result and panel structure tests passed.
+- Saved Wi-Fi Show/Hide was exercised in the device browser without logging or capturing the unmasked password. The saved-field API passed positive and negative tests: explicit local POST/header required, foreign origins rejected, field allowlist and payload bounds enforced, no CORS grant, no-store response, routine configuration omits secrets, and viewing preserves settings/triggers and boot. This is not authentication; the feature is for a trusted LAN only.
+- Save Wi-Fi reported a verified live connection in the browser. A separate same-network partial-save hardware check returned `rebooting: false` and preserved all settings. An overlapping restart/printer-field change was investigated; the owner confirmed they were changing settings concurrently. Those owner edits were retained, not reverted.
+- Network showed Connected; Operation/Motor showed Ready; Printer identified only the missing access code after the owner's address/serial edits. The final global Save button was disabled while Save Wi-Fi remained enabled. On Overview, the amber Settings tab and setup reminder remained visible. Final saved Wi-Fi reveal/Hide was rechecked, and 390/1280-pixel overflow checks passed. Screenshots were saved locally with credentials masked.
+- Final OTA checksum `c0066c3a74a9c797c2125f26c48cfc81ca38f1b39a3a02a19088995c7168b434` was installed on the test board; configuration/trigger fingerprints were preserved, all served UI routes matched source, Wi-Fi returned connected, the motor remained idle, and incomplete setup routed to `/config`.
 
 ## Release artifacts
 
 | Image | Bytes | SHA-256 |
 | --- | ---: | --- |
-| OTA application | 1,192,992 | `e0d18646beb7decfb033436775ad265ec9d7494b2f913f9e81827aaab8501395` |
-| Merged USB image | 1,258,528 | `add9b367f88e826f1e2978820392dade5f4373d750bd4d03fa68e569b20a2f06` |
+| OTA application | 1,199,552 | `c0066c3a74a9c797c2125f26c48cfc81ca38f1b39a3a02a19088995c7168b434` |
+| Merged USB image | 1,265,088 | `441d21233d57c9d6f6a70b79b0d95f290092a7d5565240cf89e68772b35e8300` |
 
 Canonical release files, installer copies, and local distribution copies match. The merged image contains the application at `0x10000`, byte-identical to the OTA image. The versioned USB manifest references the merged image at offset `0`, with ESP32 and Improv settings retained. The versioned descriptor references the OTA image and its correct checksum. Its GitHub tag URL is a future publication target, not an already-live mirror.
 

@@ -6,7 +6,10 @@ Makes first-time printer setup easier with local Bambu printer discovery.
 - A first-time, unconfigured MQTT setup starts a short search automatically. Configured devices search only when you click **Find printer**.
 - Choose the correct printer, enter its LAN access code, and click **Save settings**. Searching or selecting a printer never saves configuration or retrieves passwords.
 - Manual entry remains available when a printer is off, on another network, or its announcements are blocked.
-- Network and Printer settings have separate sections. Show/Hide buttons let you check credentials you enter without exposing stored passwords.
+- Network and Printer settings have separate sections with readiness indicators and guidance for missing details. Operation and Motor defaults are marked ready.
+- Save settings stays unavailable until required printer details are complete in MQTT mode; an existing saved access code counts. Motion mode does not require printer credentials, and Save Wi-Fi remains separate. Incomplete saved setup highlights the Settings tab and shows a reminder on Overview.
+- Save Wi-Fi updates only network settings. Save & check printer updates printer details and verifies the saved MQTT connection; either action may restart the device.
+- Show/Hide buttons can reveal saved Wi-Fi passwords and printer access codes explicitly on the local device. Viewing a saved value does not replace or re-save it. Routine settings responses still omit credentials; use this unauthenticated local interface only on a trusted network.
 - Incomplete printer setup no longer starts MQTT connection attempts that can interrupt the Settings page or discovery search.
 - Motor timing, triggers, configured MQTT operation, indicators, Wi-Fi provisioning, and previous-stable recovery are unchanged.
 
