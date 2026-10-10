@@ -1,9 +1,9 @@
 {
-  "version": "1.5.3",
+  "version": "1.5.4",
   "channel": "stable",
-  "label": "v1.5.3",
-  "bin": "firmware/Bambu-Poop-Conveyor-v1.5.3-ota.bin",
+  "label": "v1.5.4",
+  "bin": "firmware/Bambu-Poop-Conveyor-v1.5.4-ota.bin",
   "manifest": "manifest.json",
-  "githubBin": "https://raw.githubusercontent.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/Release-v1.5.3/firmware/releases/v1.5.3/Bambu-Poop-Conveyor-v1.5.3-ota.bin",
-  "sha256": "6b472c6b6d33804b7861e926af56d3641dd6a7ff216df484a1118e2180fcd935"
+  "githubBin": "https://raw.githubusercontent.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/Release-v1.5.4/firmware/releases/v1.5.4/Bambu-Poop-Conveyor-v1.5.4-ota.bin",
+  "sha256": "30ecfb071931347537a83778589172574ee4eec4b01fc6fce910e81862fba0c1"
 }

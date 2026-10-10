@@ -5,5 +5,5 @@
   "bin": "firmware/Bambu-Poop-Conveyor-v1.5.4-ota.bin",
   "manifest": "manifest-v1.5.4.json",
   "githubBin": "https://raw.githubusercontent.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/Release-v1.5.4/firmware/releases/v1.5.4/Bambu-Poop-Conveyor-v1.5.4-ota.bin",
-  "sha256": "c0066c3a74a9c797c2125f26c48cfc81ca38f1b39a3a02a19088995c7168b434"
+  "sha256": "30ecfb071931347537a83778589172574ee4eec4b01fc6fce910e81862fba0c1"
 }

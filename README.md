@@ -31,13 +31,22 @@
 > [!TIP] 
 > The public installer is at https://t0nyz.com/flasher.
 
-## What's new in v1.5.3
+## What's new in v1.5.4
 
-Version 1.5.3 builds on the responsive v1.5 control center and MQTT status-light recovery without changing the established motor timing.
+Version 1.5.4 makes first-time printer setup easier and keeps connection feedback clearer, without changing the established motor timing.
 
-- Opens Settings automatically when Wi-Fi or MQTT printer setup is incomplete; configured and motion-only devices still open Overview
-- Hides superseded beta releases after a public release is available
-- Offers original v1.5.1 files as previous stable, with accurate rollback messages and separate v1.4.2 legacy recovery
+- Settings finds Bambu printers on the same Wi-Fi network, prominently shows their names as they appear, and lets you choose which printer's details to fill
+- First-time printer search waits for live Wi-Fi and recovers from temporary startup/restart errors; retries preserve entered details and found printers, with manual entry always available
+- Separate Network and Printer sections highlight missing details; Save Wi-Fi and Save & check printer let you verify each connection separately
+- An acknowledged save marks the access code as saved and masked while reconnecting, rather than briefly showing it as missing; connection success requires a fresh check
+- Explicit local Show/Hide controls can reveal saved Wi-Fi passwords and printer access codes; routine settings responses still omit them
+- Overview shows the configured printer's name, a steady green connected badge, and last-known values when a status refresh is unavailable
+- Unsaved edits survive switching tabs; settings/update guards, interrupted-upload recovery, and bounded downloads make the control center more resilient
+- Each conveyor uses a distinct, stable MQTT client name so multiple controllers do not replace each other's printer connection
+
+See the [v1.5.4 release notes](docs/release-notes-v1.5.4.md). The device interface is unauthenticated: use it only on a trusted network.
+
+### Control-center features
 
 - Live Wi-Fi, printer, MQTT, conveyor, and physical LED status
 - Manual run and emergency stop controls
@@ -47,12 +56,12 @@ Version 1.5.3 builds on the responsive v1.5 control center and MQTT status-light
 - Safer in-device firmware updates with real upload progress, delayed reboot, reconnect, and version verification
 - Side-by-side public and beta update discovery, with t0nyz.com as the default download source and an optional GitHub mirror when available
 - A continuous USB web-installer flow: flash, configure Wi-Fi, then open the ESP32 without losing the installer page
-- Safer settings APIs that never send stored Wi-Fi passwords or printer access codes back to the browser
+- Routine settings APIs omit stored Wi-Fi passwords and printer access codes; Show/Hide retrieves a saved value only on explicit local request
 - Friendly network identity: `BambuConveyor-ESP32` and `bambuconveyor-esp32.local`
 - Expanded first-party Home Assistant REST controls
 - Direct `/logs`, `/config`, and `/update` links now open the intended control-center tab
 
-The optional v1.5.4 Beta 4 adds printer discovery, guided Settings, and clearer connection status, with a prominent confirmation when a printer is found, clearer feedback while saved settings reconnect, and automatic recovery if Settings opens before Wi-Fi setup has finished restarting the device. Its local Show/Hide controls can reveal saved credentials on explicit request; routine responses still omit them. Use that unauthenticated device interface only on a trusted network. See [beta release notes](docs/release-notes-v1.5.4-beta.4.md). The public installer remains on stable v1.5.3.
+Incomplete Wi-Fi or MQTT printer setup opens Settings automatically; configured and motion-only devices still open Overview. Previous-stable v1.5.1 and separate v1.4.2 legacy recovery remain available.
 
 ### Web control center
 
@@ -96,7 +105,7 @@ The **Bambu Poop Conveyor** supports two methods for triggering the conveyor, de
 
 #### 1. MQTT Mode (Recommended for X1C) (Default setting)
 - Best suited for **X1C printers** due to their more powerful CPU, which handles MQTT updates more efficiently.
-- Listens for printer status changes and automatically activates the conveyor using your saved event rules. The defaults retain nozzle cleaning and filament-change behavior, and v1.5.3 can add any known printer stage or print lifecycle state.
+- Listens for printer status changes and automatically activates the conveyor using your saved event rules. The defaults retain nozzle cleaning and filament-change behavior, and v1.5.4 can add any known printer stage or print lifecycle state.
 - Requires a stable network connection and correct MQTT setup.
 
 #### 2. IR Motion Detection Mode (Better for P1 & A1 Series)
@@ -133,7 +142,7 @@ To install the firmware, use one of the following methods:
    - Alternatively, download the precompiled ESPTool from the official Espressif GitHub.
 
 #### **2. Download the Firmware File**  
-   - Download `Bambu-Poop-Conveyor-v1.5.3-merged.bin` from the **[GitHub Releases](https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/releases/latest)** page.
+   - Download `Bambu-Poop-Conveyor-v1.5.4-merged.bin` from the **[v1.5.4 release](https://github.com/t0nyz0/Bambu-Poop-Conveyor-ESP32/releases/tag/Release-v1.5.4)** page.
 
 #### **3. Connect Your ESP32**  
    - Plug your ESP32 into your computer using a USB cable.  
@@ -151,7 +160,7 @@ To install the firmware, use one of the following methods:
    - Replace `<PORT>` with your ESP32’s serial port (e.g., `/dev/tty.usbserial-1`):  
      ```sh
      esptool --chip esp32 --port /dev/tty.usbserial-1 --baud 460800 write-flash \
-       0x0 Bambu-Poop-Conveyor-v1.5.3-merged.bin
+       0x0 Bambu-Poop-Conveyor-v1.5.4-merged.bin
      ```  
 
 #### **6. Verify Flashing and Restart**  
@@ -162,6 +171,8 @@ Your ESP32 should now be running the updated firmware.
 ## Configuring via Web Interface
 
 With the USB web installer, Wi-Fi can be configured in the same installation dialog. The installer then provides a link to the new device.
+
+For a first-time MQTT setup, Settings waits for the device to finish connecting, then searches the network for printers. Choose **Use selected printer**, enter the printer's LAN access code, and choose **Save & check printer**. Finding or selecting a printer does not save its connection settings. You can always enter the details manually instead.
 
 If serial Wi-Fi setup is skipped, the ESP32 starts in AP Mode:
 
@@ -214,9 +225,9 @@ The firmware checks three independent website channels:
 - Previous stable: `https://t0nyz.com/flasher/previous-stable.json`
 - Legacy recovery for older clients: `https://t0nyz.com/flasher/rollback.json`
 
-Each channel manifest can provide both a primary `bin` URL and an optional `githubBin` mirror. A single global **Firmware source** selector defaults to **Developer Site (t0nyz.com)** and can switch public, beta, and rollback downloads to GitHub; a channel's install button is disabled if its mirror is not available yet. Versioned mirror binaries are stored under `firmware/releases/` so the raw GitHub URL supports browser-based one-click installation; GitHub Release assets remain available for ordinary manual downloads.
+Each channel's release descriptor can provide both a primary `bin` URL and an optional `githubBin` mirror. A single global **Firmware source** selector defaults to **Developer Site (t0nyz.com)** and can switch public, beta, and rollback downloads to GitHub; a channel's install button is disabled if its mirror is not available yet. Versioned mirror binaries are stored under `firmware/releases/` so the raw GitHub URL supports browser-based one-click installation; GitHub Release assets remain available for ordinary manual downloads.
 
-The public v1.5.3 USB installer is available at `https://t0nyz.com/flasher`. The public installer and the new device Update tab offer the checksum-verified v1.5.1 previous stable. Original v1.4.2 files remain available as legacy recovery; its existing feed is unchanged for older firmware. OTA rollback retains stored settings; a clean USB recovery can erase them.
+The public v1.5.4 USB installer is available at `https://t0nyz.com/flasher`. The public installer and the device Update tab offer the checksum-verified v1.5.1 previous stable. Original v1.4.2 files remain available as legacy recovery; its existing feed is unchanged for older firmware. OTA rollback retains stored settings; a clean USB recovery can erase them.
 
 When the public release supersedes a beta, the Update screen shows **No newer beta available** and hides its install button. Old beta files remain archived; they are not silently replaced with stable files.
 
@@ -243,7 +254,7 @@ When no motor cycle is active, yellow begins flashing after a five-second printe
 
 ### Home Assistant
 
-v1.5.3 keeps Home Assistant support in this firmware—no alternate firmware is required. Replace `192.168.1.116` below with the ESP32's reserved IP address.
+v1.5.4 keeps Home Assistant support in this firmware—no alternate firmware is required. Replace `192.168.1.116` below with the ESP32's reserved IP address.
 
 ```yaml
 rest_command:

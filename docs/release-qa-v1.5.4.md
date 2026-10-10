@@ -1,6 +1,44 @@
-# v1.5.4 candidate QA
+# v1.5.4 QA
 
-Tested October 9, 2026. This document records chronological v1.5.4 candidate testing. The owner approved publication as optional **v1.5.4 Beta 1**, not as the latest stable release. Public stable v1.5.3 and the existing recovery files remain unchanged.
+This document records chronological v1.5.4 testing. Older package hashes and
+unpublished/channel status below describe earlier candidates, not the final
+stable package.
+
+## Stable promotion — October 10, 2026
+
+- The owner approved promotion after testing v1.5.4 Beta 4. The stable firmware
+  differs from the immutable Beta 4 source only in `displayVersion`: `1.5.4`
+  replaces `1.5.4 Beta 4`. The web source, embedded UI, motor/MQTT logic,
+  configuration storage, provisioning and partitions are unchanged.
+- All 267 firmware regression cases passed: 139 UI/release checks and 128
+  startup, MQTT/indicator, discovery, settings/upload and HTTP host scenarios.
+- Stable build passed with 59,764 bytes of static RAM and a 1,205,392-byte OTA
+  application, within the existing 1,310,720-byte partition. The merged USB image
+  is 1,270,928 bytes; its application at `0x10000` exactly matches the OTA image.
+- Canonical, installer and distribution images/checksums agree. The generated
+  UI decompresses exactly to the web source and is present in the application.
+  USB manifests retain ESP32, Improv, the 30-second provisioning wait, the erase
+  prompt and merged offset `0`; version is not repeated in the product name.
+- Real stable OTA acceptance passed on the connected Beta 4 conveyor at
+  `10.0.0.41`: boot `973612756` changed to `790777862`, display version became
+  `1.5.4`, saved settings and trigger fingerprints were unchanged, Wi-Fi was
+  connected, motor was Idle, and all served control-center routes matched the
+  final UI source. No credential values were printed or captured.
+- A subsequent short 20-request observation passed without request failure,
+  sampled Wi-Fi/MQTT loss, restart or motor activity. Latency was
+  44 / 145 / 400 ms (minimum / median / maximum); free heap ranged from
+  106,616 to 114,056 bytes. This is a short idle check, not an overnight soak.
+- Final stable OTA SHA-256:
+  `30ecfb071931347537a83778589172574ee4eec4b01fc6fce910e81862fba0c1`.
+- Final stable merged SHA-256:
+  `4cea0f1dcdd136114bcff72b9a5d1b4be972f4ec7bdadb5a35ff369e055b3855`.
+- Promotion keeps v1.5.1 as previous stable and v1.4.2 as separate legacy
+  recovery. Published beta images and tags remain archived; no active beta is
+  offered once stable v1.5.4 supersedes Beta 4.
+- A fresh physical USB erase/provisioning run, other physical printer models,
+  a full print/motor cycle and an overnight soak were not repeated for the
+  label-only stable build. USB package validation and short device checks do
+  not replace those longer hardware tests.
 
 ## Beta 1 package acceptance
 
