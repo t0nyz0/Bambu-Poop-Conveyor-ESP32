@@ -15,6 +15,13 @@ const release = (version, label = `v${version}`, mirror = true) => ({ version, l
 const fulfilled = value => ({ status: 'fulfilled', value });
 const rejected = { status: 'rejected', reason: new Error('Offline') };
 
+test('settings keeps the requested plain headline', () => {
+  const settings = html.match(/<section\b[^>]*id="settings"[^>]*>([\s\S]*?)<\/section>/);
+  assert.ok(settings, 'Missing Settings section');
+  assert.match(settings[1], /<h1>Settings<\/h1>/);
+  assert.doesNotMatch(html, /Settings without exposed secrets/);
+});
+
 test('release button styles respect the hidden attribute', () => {
   assert.match(html, /\.release-install\[hidden\]\s*\{\s*display\s*:\s*none\s*\}/);
 });
